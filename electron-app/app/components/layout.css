@@ -1,0 +1,45 @@
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(27, 20, 13, 0.2);
+  border-radius: 4px;
+  transition: background-color 140ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(27, 20, 13, 0.4);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-color: rgba(27, 20, 13, 0.2) transparent;
+  scrollbar-width: thin;
+}
+
+/* App shell layout */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}

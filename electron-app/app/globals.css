@@ -6,8 +6,10 @@ html, body {
   padding: 0;
   margin: 0;
   font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
-  background: #05070d;
-  color: #e8ecf5;
+  background: #ffffff;
+  color: #19140f;
+  height: 100%;
+  width: 100%;
 }
 
 a {
@@ -20,11 +22,13 @@ main {
 }
 
 .card {
-  background: linear-gradient(145deg, #0d1221 0%, #0f1527 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 140, 64, 0.18);
   border-radius: 14px;
   padding: 18px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  box-shadow: 0 24px 80px rgba(40, 18, 6, 0.14);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .row {
@@ -39,21 +43,114 @@ main {
   justify-content: center;
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: #e8ecf5;
+  border: 1px solid rgba(255, 140, 64, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  color: #19140f;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 120ms ease, border 120ms ease, background 120ms ease;
+  transition: transform 220ms ease, border 220ms ease, background 220ms ease, box-shadow 220ms ease;
 }
 
 .button:hover {
   transform: translateY(-1px);
-  border-color: #7cc4ff;
+  border-color: rgba(255, 122, 24, 0.7);
+  box-shadow: 0 16px 50px rgba(255, 122, 24, 0.14);
 }
 
 .button.primary {
-  background: linear-gradient(135deg, #7cc4ff 0%, #5ea8ff 100%);
-  color: #05070d;
+  background: linear-gradient(135deg, #ff7a18 0%, #ff4d2e 100%);
+  color: #1a0f07;
   border: none;
+}
+
+/* Welcome */
+.welcome-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.welcome-card {
+  width: min(920px, calc(100% - 24px));
+  padding: 26px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 140, 64, 0.18);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 0 40px 120px rgba(40, 18, 6, 0.16);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: welcomeIn 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes welcomeIn {
+  from { opacity: 0; transform: translateY(16px); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.9px;
+  line-height: 1.05;
+}
+
+.welcome-sub {
+  margin: 10px 0 0;
+  color: rgba(25, 20, 15, 0.72);
+  line-height: 1.65;
+  font-size: 17px;
+}
+
+.welcome-bubble {
+  margin-top: 18px;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 122, 24, 0.18);
+  background: radial-gradient(800px 260px at 16% 16%, rgba(255, 122, 24, 0.14), transparent 55%),
+    radial-gradient(700px 260px at 84% 22%, rgba(255, 77, 46, 0.10), transparent 58%),
+    rgba(255, 255, 255, 0.68);
+}
+
+.welcome-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.welcome-line {
+  margin: 0;
+  line-height: 1.7;
+  font-size: 16px;
+}
+
+.welcome-line2 {
+  margin-top: 8px;
+  opacity: 0.95;
+}
+
+.welcome-caret {
+  margin-left: 2px;
+  opacity: 0.55;
+}
+
+.welcome-dontshow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.welcome-dontshow-text {
+  opacity: 0.8;
+}
+
+.muted-link {
+  opacity: 0.8;
+}
+
+.muted-link:hover {
+  opacity: 1;
 }

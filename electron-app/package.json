@@ -1,8 +1,12 @@
 {
-  "name": "ltx-prompter-electron",
-  "version": "0.1.0",
+  "name": "ltx-prompter",
+  "version": "1.0.0",
+  "description": "A guided, friendly prompt wizard with customizable presets for video and creative production.",
+  "author": "Your Name",
+  "license": "MIT",
   "private": true,
   "main": "electron/main.js",
+  "homepage": "./",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,10 +14,62 @@
     "electron": "cross-env NODE_ENV=development electron .",
     "dev:electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
     "lint": "next lint"
   },
+  "build": {
+    "appId": "com.ltxprompter.app",
+    "productName": "LTX Prompter",
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "files": [
+      "./out",
+      "./electron",
+      "./package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LTX Prompter"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  },
   "dependencies": {
-    "electron": "29.4.0",
     "next": "14.2.3",
     "react": "18.2.0",
     "react-dom": "18.2.0"
@@ -24,7 +80,9 @@
     "@types/react-dom": "18.3.0",
     "concurrently": "8.2.2",
     "cross-env": "7.0.3",
+    "electron": "29.4.0",
     "electron-builder": "24.13.3",
+    "electron-is-dev": "^2.0.0",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.3",
     "wait-on": "7.2.0"

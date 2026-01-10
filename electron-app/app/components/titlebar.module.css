@@ -1,0 +1,58 @@
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #f8f6f3 0%, #f3f0ec 100%);
+  border-bottom: 1px solid rgba(27, 20, 13, 0.08);
+  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #1b140d;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: rgba(27, 20, 13, 0.6);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 140ms ease;
+  padding: 0;
+}
+
+.button:hover {
+  background: rgba(27, 20, 13, 0.06);
+  color: rgba(27, 20, 13, 0.8);
+}
+
+.button:active {
+  background: rgba(27, 20, 13, 0.1);
+}
+
+.closeButton:hover {
+  background: rgba(255, 77, 46, 0.12);
+  color: #ff4d2e;
+}
+
+.closeButton:active {
+  background: rgba(255, 77, 46, 0.2);
+}
