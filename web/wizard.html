@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LTX Prompter · Walkthrough</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wizard.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="brand">LTX Prompter · Walkthrough</div>
+    <p class="lede">Step-by-step prompt builder with NSFW gating and mode-aware options.</p>
+  </header>
+
+  <main class="wizard-shell">
+    <div class="progress">
+      <div class="progress-track"></div>
+      <div class="progress-pips" id="progress-pips"></div>
+    </div>
+
+    <section class="steps">
+      <article class="step active" data-step="1">
+        <div class="step-header">
+          <p class="eyebrow">Step 1</p>
+          <h2>Choose your mode</h2>
+          <p class="hint">Pick the style you want to work in. Enable NSFW to unlock the NSFW mode.</p>
+        </div>
+        <div class="mode-grid" id="mode-grid">
+          <!-- Mode cards injected by JS -->
+        </div>
+        <div class="nsfw-toggle">
+          <label class="switch">
+            <input type="checkbox" id="nsfw-toggle" />
+            <span class="slider"></span>
+          </label>
+          <div>
+            <div class="toggle-title">Enable NSFW options</div>
+            <div class="toggle-note">Required if you want to use the NSFW mode.</div>
+          </div>
+        </div>
+        <div class="inline-alert" id="nsfw-alert" hidden>
+          <div class="dot"></div>
+          <p>Turn on NSFW to continue with the NSFW mode.</p>
+        </div>
+      </article>
+
+      <article class="step" data-step="2">
+        <div class="step-header">
+          <p class="eyebrow">Step 2</p>
+          <h2>Core setup</h2>
+          <p class="hint">Tell us the basics: genre, shot type, and role.</p>
+        </div>
+        <div class="field-grid">
+          <label class="field">
+            <span>Genre / Style</span>
+            <select id="field-genre" data-field="genre"></select>
+          </label>
+          <label class="field">
+            <span>Shot Type</span>
+            <select id="field-shot" data-field="shot"></select>
+          </label>
+          <label class="field">
+            <span>Subject Role</span>
+            <select id="field-role" data-field="role"></select>
+          </label>
+        </div>
+      </article>
+
+      <article class="step" data-step="3">
+        <div class="step-header">
+          <p class="eyebrow">Step 3</p>
+          <h2>World & mood</h2>
+          <p class="hint">Add tone, lighting, and where this happens.</p>
+        </div>
+        <div class="field-grid">
+          <label class="field">
+            <span>Mood</span>
+            <select id="field-mood" data-field="mood"></select>
+          </label>
+          <label class="field">
+            <span>Lighting</span>
+            <select id="field-lighting" data-field="lighting"></select>
+          </label>
+          <label class="field">
+            <span>Environment</span>
+            <select id="field-environment" data-field="environment"></select>
+          </label>
+        </div>
+      </article>
+
+      <article class="step" data-step="4">
+        <div class="step-header">
+          <p class="eyebrow">Step 4</p>
+          <h2>Review & build</h2>
+          <p class="hint">Confirm your picks and grab the prompt.</p>
+        </div>
+        <div class="summary" id="summary"></div>
+        <div class="output">
+          <div class="output-head">
+            <div>
+              <p class="eyebrow">Generated prompt</p>
+              <h3>Copy-ready</h3>
+            </div>
+            <button id="copy-btn" class="ghost">Copy</button>
+          </div>
+          <textarea id="prompt-output" rows="6" readonly></textarea>
+        </div>
+      </article>
+    </section>
+
+    <footer class="nav">
+      <button id="back-btn" class="ghost" type="button" disabled>Back</button>
+      <div class="nav-spacer"></div>
+      <button id="next-btn" class="primary" type="button">Next</button>
+    </footer>
+  </main>
+
+  <script type="module" src="wizard.js"></script>
+</body>
+</html>
