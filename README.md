@@ -1,4 +1,6 @@
 # LTX Prompter - Executable Build Instructions
+<img width="1280" height="900" alt="Screenshot 2026-01-11 015819" src="https://github.com/user-attachments/assets/1e64b4d6-479a-4936-8033-63d5d96aafc1" />
+
 
 ## Overview
 This repository contains the LTX Prompter application, previously a Tkinter desktop wizard for generating prompts for AI video/image generation. A new web-based version now ships in the `web/` folder with two modes:
@@ -24,6 +26,11 @@ If the build script doesn't work, you can run PyInstaller directly:
 ```bash
 pyinstaller --onefile --windowed --name LTX_Prompter LTXPROMPTER.py
 ```
+
+
+<img width="1338" height="963" alt="Screenshot 2026-01-11 015737" src="https://github.com/user-attachments/assets/777164fb-e197-45ec-af49-349e57c7340b" />
+
+
 
 ## Running the Application
 - **Web app (recommended):**
