@@ -1,6 +1,6 @@
 {
   "name": "ltx-prompter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A guided, friendly prompt wizard with customizable presets for video and creative production.",
   "author": "Your Name",
   "license": "MIT",
@@ -30,6 +30,7 @@
       "buildResources": "assets",
       "output": "release"
     },
+    "license": "assets/installer/LICENSE.txt",
     "files": [
       "./out",
       "./electron",
@@ -58,7 +59,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "LTX Prompter"
+      "shortcutName": "LTX Prompter",
+      "include": "assets/installer/ollama-notes.nsh"
     },
     "mac": {
       "target": [

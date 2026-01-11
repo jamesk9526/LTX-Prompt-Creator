@@ -1,44 +1,49 @@
-# LTX Prompter - Executable Build Instructions
+# LTX Prompter (Electron/Next)
 
-## Overview
-This repository contains the LTX Prompter application, previously a Tkinter desktop wizard for generating prompts for AI video/image generation. A new web-based version now ships in the `web/` folder with two modes:
-- **Cinematic Scene**: one-paragraph cinematic beats (Style → Shot → Subject → Costume/Prop → Setting → Light → Sound/Dialog → Camera move end beat) with seedable randomization and guardrails.
-- **Structured Prompt**: a lightweight wizard-style paragraph builder for general prompts.
+LTX Prompter is a friendly, guided prompt wizard for video and creative production. The current app is built with Next.js + React and packaged for Windows using Electron.
 
-## Building the Executable
+## Quick Start (Dev)
 
 ### Prerequisites
-- Python 3.7+ installed
-- PyInstaller installed: `pip install pyinstaller`
+- Node.js 18+
+- Windows (for Electron packaging)
 
-### Build Steps
-1. Run the build script:
-   ```bash
-   python build_exe.py
-   ```
-
-2. The executable will be created in the `dist/` folder as `LTX_Prompter.exe`
-
-### Manual Build (Alternative)
-If the build script doesn't work, you can run PyInstaller directly:
-```bash
-pyinstaller --onefile --windowed --name LTX_Prompter LTXPROMPTER.py
+### Install & Run
+```powershell
+Push-Location "electron-app"
+npm install
+npm run dev:electron
+Pop-Location
 ```
 
-## Running the Application
-- **Web app (recommended):**
-   - Open `web/index.html` directly in a browser, or run a static server (e.g. VS Code Live Server) pointing at the `web/` folder.
-   - Use the mode tabs to switch between Cinematic Scene and Structured Prompt.
-   - Optional seed box + Randomize to get deterministic picks; Copy buttons copy the one-paragraph output.
-- **Legacy desktop app:** Double-click `LTX_Prompter.exe` to run the packaged Tkinter UI.
+- App runs at a local Next.js server; Electron loads that UI automatically.
+- Use the top bar to switch `Step`, change `Mode`, and open `Projects` and `Settings`.
 
-## Features
-- Web UI with dark theme, mode tabs, seedable randomize, and copy.
-- Cinematic mode follows the requested template (dialogue formatting, camera sentence ends the beat, signature visuals, guardrails for weather/lighting and pullback reveals).
-- Structured mode offers a concise paragraph builder with common cinematic fields.
-- Legacy Tkinter wizard remains available; packaged `.exe` still supported.
+## Build Installer (Windows)
+```powershell
+Push-Location "electron-app"
+npm run dist:win
+Pop-Location
+```
+- Output: installer under `electron-app/release/`.
+- The installer shows notes about Ollama and a link to install it.
 
-## Notes
-- The executable is built with `--windowed` to hide the console
-- Built as a single file (`--onefile`) for easy distribution
-- Compatible with Windows systems
+## AI Features via Ollama
+Some features (like “Ollama Expand” and AI-assisted generation) require Ollama.
+
+- Install Ollama: https://ollama.com/
+- After installing, open the app → `Settings` → enable Ollama and pick a model.
+- Default endpoint: `http://localhost:11434`
+- Tip: Pull or set models (e.g., `llama3`, `mistral`) before using expansion.
+
+### Troubleshooting
+- If the “Ollama Expand” button is disabled, enable Ollama in `Settings`.
+- If API calls fail, confirm the Ollama service is running and the endpoint matches.
+
+## Links & Support
+- Repo: https://github.com/jamesk9526/LTX-Prompt-Creator
+- Issues: https://github.com/jamesk9526/LTX-Prompt-Creator/issues
+- Tip jar: https://ko-fi.com/jamesknox
+
+## Legacy (Old Tkinter/Web Notes)
+Earlier versions shipped a Tkinter executable and a static web page. Those instructions are now deprecated; use the Electron build above for the best experience.

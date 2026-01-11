@@ -352,6 +352,9 @@ const TEMPLATES: Record<ModeId, { name: string; fields: Record<string, string> }
   nsfw: [],
 };
 
+const detailLabelFor = (value: number) => (value < 35 ? 'Minimal' : value > 65 ? 'Rich' : 'Balanced');
+const audioLabelFor = (value: number) => (value < 40 ? 'Sparse' : value > 60 ? 'Detailed' : 'Balanced');
+
 type CinematicData = {
   genre_style: string;
   shot_type: string;
@@ -1465,13 +1468,16 @@ export default function WizardPage() {
     }));
   };
 
+  const resetUiPrefs = () => {
+    setUiPrefs(DEFAULT_UI_PREFS);
+  };
+
   return (
     <main className="wizard-shell">
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand">
             <div className="brand-title">LTXV Prompt Creator</div>
-            <div className="brand-sub">Personalize presets • auto-saved</div>
           </div>
           <div className="topbar-actions">
             <div className="topbar-group">
@@ -1553,11 +1559,13 @@ export default function WizardPage() {
                 {previewOpen ? '⊘ Hide Preview' : '✓ Show Preview'}
               </button>
               <button
-                className="ghost"
+                className="icon-btn"
                 type="button"
+                aria-label="Open projects"
+                title="Projects"
                 onClick={() => setProjectsOpen(true)}
               >
-                Projects
+                📁
               </button>
               <button
                 className="ghost"
@@ -1567,15 +1575,17 @@ export default function WizardPage() {
                 Create Preset
               </button>
               <button
-                className="ghost"
+                className="icon-btn"
                 type="button"
+                aria-label="Open settings"
+                title="Settings"
                 onClick={() => {
                   setSettingsMode(mode);
                   setSettingsField('genre');
                   setSettingsOpen(true);
                 }}
               >
-                Settings
+                ⚙️
               </button>
               <button
                 className="ghost"
@@ -1748,6 +1758,17 @@ export default function WizardPage() {
               <button className="ghost" type="button" onClick={() => setSettingsOpen(false)}>
                 Close
               </button>
+            </div>
+
+            <div className="settings-summary-row" aria-label="Current settings overview">
+              <div className="summary-chip">Capture word: {uiPrefs.captureWord}</div>
+              <div className="summary-chip">Format: {uiPrefs.promptFormat === 'ltx2' ? 'LTX-2' : 'Paragraph'}</div>
+              <div className="summary-chip">Detail: {detailLabelFor(visualEmphasis)}</div>
+              <div className="summary-chip">Audio: {audioLabelFor(audioEmphasis)}</div>
+              <div className="settings-summary-actions">
+                <button className="ghost tiny" type="button" onClick={resetUiPrefs}>Reset UI</button>
+                <button className="ghost tiny" type="button" onClick={resetModeToDefaults}>Reset mode list</button>
+              </div>
             </div>
 
             <div className="settings-tabs">
@@ -2548,6 +2569,50 @@ export default function WizardPage() {
             <p className="eyebrow">Step 1</p>
             <h2>Let’s set you up</h2>
             <p className="hint">Quick questions — I’ll pick the best mode for you.</p>
+          </div>
+
+          <div className="setup-progress" aria-label="Onboarding progress">
+            {[{ id: 1, label: 'Pick type', done: introStage > 0, active: introStage === 0 },
+              { id: 2, label: 'Style vibe', done: introStage > 1, active: introStage === 1 },
+              { id: 3, label: 'Wording', done: introStage > 2, active: introStage >= 2 && introStage < 4 }].map((item) => (
+              <span
+                key={item.id}
+                className={`setup-pill ${item.done ? 'done' : ''} ${item.active ? 'active' : ''}`}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="setup-quick" aria-label="Current onboarding choices">
+            <div className="setup-chips">
+              <span className="setup-chip">Mode: {labelForMode(mode)}</span>
+              <span className="setup-chip">NSFW: {nsfwEnabled ? 'On' : 'Off'}</span>
+              <span className="setup-chip">Wording: {uiPrefs.captureWord}</span>
+            </div>
+            <div className="setup-actions">
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => {
+                  setIntroStage(5);
+                  setStep(2);
+                }}
+              >
+                Skip intro and build
+              </button>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => {
+                  setIntroStage(0);
+                  setIntroBase(null);
+                  setIntroCinematicFlavor(true);
+                }}
+              >
+                Restart questions
+              </button>
+            </div>
           </div>
 
           <div className="friend-bubble" aria-label="Assistant message">
@@ -3365,6 +3430,33 @@ export default function WizardPage() {
                   addToPromptHistory(prompt);
                   showToast('Copied & saved');
                 }}>📋 Copy</button>
+              </div>
+
+              <div className="preview-meta">
+                <div className="meta-row" aria-label="Preview context summary">
+                  <span className="meta-chip">Mode: {labelForMode(mode)}</span>
+                  <span className="meta-chip">Tone: {editorTone.charAt(0).toUpperCase() + editorTone.slice(1)}</span>
+                  <span className="meta-chip">Detail: {detailLabelFor(visualEmphasis)}</span>
+                  <span className="meta-chip">Audio: {audioLabelFor(audioEmphasis)}</span>
+                </div>
+                <div className="meta-actions">
+                  <button
+                    className="ghost tiny"
+                    type="button"
+                    onClick={() => addToPromptHistory(prompt)}
+                    title="Save to prompt history"
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="ghost tiny"
+                    type="button"
+                    onClick={() => setPreviewOpen(false)}
+                    title="Hide preview"
+                  >
+                    Hide
+                  </button>
+                </div>
               </div>
               <pre key={previewAnimTick} className="preview-text">
                 {prompt}
