@@ -25,6 +25,10 @@ async function startStaticServer() {
 }
 
 function createWindow() {
+  const appIcon = process.platform === 'win32'
+    ? path.join(__dirname, '../assets/icon.ico')
+    : path.join(__dirname, '../assets/icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 900,
@@ -35,7 +39,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
+    icon: appIcon,
     frame: false,
     titleBarStyle: 'hidden',
     show: false,

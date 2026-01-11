@@ -81,3 +81,12 @@ Edit `package.json` under `name`, `description`, and `build.productName`.
 ---
 
 See [BUILD.md](BUILD.md) for detailed configuration and advanced options.
+
+## Movement Prompts (Step 5)
+
+- Use the new fields to structure motion:
+  - **Movement subject type:** Person or Object.
+  - **Movement subject label:** Free text like "the person" or "the suitcase".
+  - **Movement 1 / Movement 2:** Pick or type actions (e.g., "walks in" then "sits").
+- If you leave the "Core actions" box empty, these movement beats will be auto-included in the final prompt.
+ - Write "Core actions" as a short synopsis using beats like "Opening", "Mid beat", and "Closing" — avoid seconds or timestamps.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import styles from './titlebar.module.css';
 
 interface WindowState {
@@ -81,10 +82,12 @@ export default function TitleBar() {
     <div
       className={styles.titlebar}
       onMouseDown={handleMouseDown}
-      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      <div className={styles.title}>LTX Prompter</div>
-      <div className={styles.controls} style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <div className={styles.brand}>
+        <Image className={styles.brandIcon} src="/icon.svg" alt="" width={18} height={18} priority />
+        <div className={styles.title}>LTX Prompter</div>
+      </div>
+      <div className={styles.controls}>
         <button
           className={styles.button}
           onClick={handleMinimize}

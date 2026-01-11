@@ -61,8 +61,26 @@ function startServer(port, rootDir) {
           return;
         }
 
-        // File not found, fallback to index.html for SPA routing
-        serveRootIndex();
+        // File not found: support Next.js export routes like /wizard -> wizard.html
+        const htmlCandidate = path.join(rootDir, `${pathname}.html`);
+        fs.stat(htmlCandidate, (htmlErr, htmlStats) => {
+          if (!htmlErr && htmlStats.isFile()) {
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            fs.createReadStream(htmlCandidate).pipe(res);
+            return;
+          }
+          // Also try /route/index.html if user requested a trailing slash style
+          const indexCandidate = path.join(rootDir, pathname, 'index.html');
+          fs.stat(indexCandidate, (idxErr, idxStats) => {
+            if (!idxErr && idxStats.isFile()) {
+              res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+              fs.createReadStream(indexCandidate).pipe(res);
+              return;
+            }
+            // Fallback to root index.html for SPA routing
+            serveRootIndex();
+          });
+        });
       });
 
       function serveRootIndex() {

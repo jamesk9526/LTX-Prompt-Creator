@@ -13,10 +13,12 @@
     "start": "next start",
     "electron": "cross-env NODE_ENV=development electron .",
     "dev:electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron\"",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux",
+    "icons": "node scripts/generate-icons.js",
+    "build-dist": "node scripts/build-dist.js",
+    "dist": "npm run icons && npm run build && electron-builder",
+    "dist:win": "npm run icons && npm run build && electron-builder --win",
+    "dist:mac": "npm run icons && npm run build && electron-builder --mac",
+    "dist:linux": "npm run icons && npm run build && electron-builder --linux",
     "lint": "next lint"
   },
   "build": {
@@ -29,9 +31,11 @@
     "files": [
       "./out",
       "./electron",
+      "./assets",
       "./package.json"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -85,6 +89,8 @@
     "electron-is-dev": "^2.0.0",
     "eslint": "8.57.0",
     "eslint-config-next": "14.2.3",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
     "wait-on": "7.2.0"
   }
 }

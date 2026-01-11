@@ -4,24 +4,43 @@
   justify-content: space-between;
   height: 40px;
   padding: 0 16px;
-  background: linear-gradient(180deg, #f8f6f3 0%, #f3f0ec 100%);
-  border-bottom: 1px solid rgba(27, 20, 13, 0.08);
+  background: linear-gradient(180deg, rgba(12,13,16,0.92) 0%, rgba(10,11,14,0.92) 100%);
+  border-bottom: 1px solid var(--border);
   font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  -webkit-user-select: none;
   user-select: none;
   flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+  -webkit-app-region: drag;
 }
 
 .title {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.4px;
-  color: #1b140d;
+  color: var(--text);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brandIcon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 10px rgba(255, 122, 24, 0.18));
 }
 
 .controls {
   display: flex;
   align-items: center;
   gap: 12px;
+  -webkit-app-region: no-drag;
 }
 
 .button {
@@ -32,7 +51,7 @@
   height: 32px;
   border: none;
   background: transparent;
-  color: rgba(27, 20, 13, 0.6);
+  color: rgba(233, 230, 223, 0.7);
   cursor: pointer;
   border-radius: 6px;
   transition: all 140ms ease;
@@ -40,17 +59,17 @@
 }
 
 .button:hover {
-  background: rgba(27, 20, 13, 0.06);
-  color: rgba(27, 20, 13, 0.8);
+  background: rgba(255, 122, 24, 0.12);
+  color: var(--text);
 }
 
 .button:active {
-  background: rgba(27, 20, 13, 0.1);
+  background: rgba(255, 122, 24, 0.18);
 }
 
 .closeButton:hover {
   background: rgba(255, 77, 46, 0.12);
-  color: #ff4d2e;
+  color: var(--accent-strong);
 }
 
 .closeButton:active {

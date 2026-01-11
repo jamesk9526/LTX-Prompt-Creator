@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
-  distDir: 'out',
+  // Use default .next build dir so the exported static site lands in ./out
   images: {
     unoptimized: true,
   },
