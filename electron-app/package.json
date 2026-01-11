@@ -8,17 +8,19 @@
   "main": "electron/main.js",
   "homepage": "./",
   "scripts": {
+    "clean": "node -e \"const fs=require('fs'); for (const p of ['.next','out']) { try { fs.rmSync(p,{recursive:true,force:true}); } catch {} }\"",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:natural": "node tests/prompt-validation.test.js",
     "electron": "cross-env NODE_ENV=development electron .",
     "dev:electron": "concurrently -k \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron\"",
     "icons": "node scripts/generate-icons.js",
     "build-dist": "node scripts/build-dist.js",
-    "dist": "npm run icons && npm run build && electron-builder",
-    "dist:win": "npm run icons && npm run build && electron-builder --win",
-    "dist:mac": "npm run icons && npm run build && electron-builder --mac",
-    "dist:linux": "npm run icons && npm run build && electron-builder --linux",
+    "dist": "npm run clean && npm run icons && npm run build && electron-builder",
+    "dist:win": "npm run clean && npm run icons && npm run build && electron-builder --win",
+    "dist:mac": "npm run clean && npm run icons && npm run build && electron-builder --mac",
+    "dist:linux": "npm run clean && npm run icons && npm run build && electron-builder --linux",
     "lint": "next lint"
   },
   "build": {

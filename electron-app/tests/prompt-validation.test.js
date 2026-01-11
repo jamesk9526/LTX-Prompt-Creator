@@ -8,7 +8,7 @@ const path = require('path');
 
 // Test configuration
 const TOTAL_TESTS = 50; // Number of randomization tests per mode
-const MODES = ['cinematic', 'classic', 'nsfw'];
+const MODES = ['cinematic', 'classic', 'drone', 'animation', 'nsfw'];
 
 // Sample data for random selection
 const sampleData = {
@@ -36,6 +36,56 @@ const sampleData = {
     movement2: ['sits', 'stands', 'takes a seat', 'stops and looks around', 'is set down'],
     movementPace: ['slow', 'steady', 'brisk', 'hurried', 'hesitant'],
     movementManner: ['confidently', 'nervously', 'quietly', 'carefully', 'casually'],
+  },
+  drone: {
+    genre: ['Drone landscape film', 'Nature aerial', 'Architectural flyover', 'Environmental documentary', 'Cinematic aerial'],
+    shot: ['Wide aerial', 'High-altitude establishing', 'Low pass reveal', 'Top-down survey', 'Orbiting wide'],
+    role: ['mountain ridge', 'coastline cliffs', 'winding river', 'city skyline', 'desert dunes'],
+    mood: ['Serene', 'Majestic', 'Mysterious', 'Epic', 'Calm'],
+    lighting: ['Golden hour', 'Soft overcast', 'Cool dawn', 'Crisp midday', 'Moody twilight'],
+    environment: ['vast valley', 'coastal headlands', 'modern city core', 'ancient ruins', 'snowy peaks'],
+    wardrobe: ['no people visible', 'mist layers', 'wet reflections', 'dust trails', 'ocean spray'],
+    pose: ['slow drift', 'sweeping reveal', 'smooth lateral glide', 'gentle orbit', 'ascending pullback'],
+    weather: ['Clear', 'Hazy', 'Overcast', 'Light fog', 'Windy'],
+    cameraMove: ['glides forward', 'orbits smoothly', 'rises slowly', 'pulls back to reveal', 'tracks along the horizon'],
+    lens: ['24mm wide', '16mm ultra-wide', '35mm', 'anamorphic wide', 'drone wide'],
+    colorGrade: ['Natural', 'Warm filmic', 'Cool neutral', 'Teal & amber', 'Muted documentary'],
+    sound: ['wind ambience', 'distant surf', 'birds and air tone', 'city hush', 'quiet natural ambience'],
+    sfx: ['subtle wind texture', 'prop wash', 'distant birds', 'faint traffic', 'ocean spray'],
+    music: ['ambient score', 'minimal cinematic pad', 'quiet documentary underscore', 'slow orchestral swell', 'atmospheric drone'],
+    sig1: ['layered depth haze', 'scale-reveal composition', 'texture-rich terrain', 'leading lines', 'dramatic parallax'],
+    sig2: ['soft rim light', 'gentle film grain', 'lens bloom', 'high micro-contrast', 'clean gradients'],
+    lightInteraction: ['wraps gently', 'glitters on surfaces', 'cuts through haze', 'paints rim highlights', 'diffuses evenly'],
+    focusTarget: ['the landscape', 'the landmark', 'the coastline', 'the skyline', 'the terrain'],
+    movement1: ['glides in', 'drifts forward', 'rises', 'tracks along', 'orbits'],
+    movement2: ['pulls back', 'holds steady', 'tilts down', 'banks gently', 'reveals the horizon'],
+    movementPace: ['slow', 'steady', 'brisk', 'smooth', 'measured'],
+    movementManner: ['smoothly', 'quietly', 'confidently', 'carefully', 'steadily'],
+  },
+  animation: {
+    genre: ['Anime action beat', '2D cel animation', '3D stylized short', 'Stop-motion vignette', 'Cartoon comedy'],
+    shot: ['Dynamic wide', 'Punch-in close-up', 'Over-the-shoulder', 'Hero pose', 'Establishing wide'],
+    role: ['hero', 'villain', 'sidekick', 'mentor', 'creature'],
+    mood: ['Playful', 'Intense', 'Whimsical', 'Dramatic', 'Heartfelt'],
+    lighting: ['Soft toon lighting', 'Bold rim light', 'Neon glow', 'Warm sunset', 'Moody backlight'],
+    environment: ['stylized city', 'fantasy forest', 'mecha hangar', 'cozy room', 'storybook village'],
+    wardrobe: ['iconic outfit', 'uniform', 'casual streetwear', 'fantasy armor', 'colorful costume'],
+    pose: ['dynamic', 'expressive', 'mid-action', 'confident stance', 'exaggerated gesture'],
+    weather: ['Clear', 'Rain', 'Snow', 'Fog', 'Night'],
+    cameraMove: ['snappy push-in', 'smooth pan', 'whip pan', 'crane reveal', 'arc around'],
+    lens: ['virtual 35mm', 'virtual 50mm', 'wide virtual lens', 'anamorphic look', 'telephoto look'],
+    colorGrade: ['Vibrant', 'Pastel', 'High contrast', 'Warm', 'Cool'],
+    sound: ['room tone', 'city ambience', 'wind ambience', 'crowd murmur', 'quiet ambience'],
+    sfx: ['whoosh', 'impact hits', 'sparkle chimes', 'footsteps', 'cloth rustle'],
+    music: ['upbeat theme', 'dramatic score', 'lo-fi pad', 'orchestral swell', 'playful plucks'],
+    sig1: ['stylized linework accents', 'shape language clarity', 'limited palette control', 'texture overlay', 'expressive smear frames'],
+    sig2: ['expressive shading', 'bloom highlights', 'clean silhouettes', 'graphic shadows', 'halftone texture'],
+    lightInteraction: ['wraps gently', 'paints bold highlights', 'creates graphic shadows', 'glows softly', 'diffuses evenly'],
+    focusTarget: ['the character', 'the face', 'the eyes', 'the hands', 'the silhouette'],
+    movement1: ['runs in', 'jumps', 'bursts forward', 'slides into frame', 'spins'],
+    movement2: ['lands', 'poses', 'stops', 'looks back', 'waves'],
+    movementPace: ['fast', 'snappy', 'steady', 'slow', 'brisk'],
+    movementManner: ['confidently', 'playfully', 'dramatically', 'carefully', 'boldly'],
   },
   classic: {
     genre: ['Portrait', 'Fashion editorial', 'Documentary', 'Landscape', 'Architectural'],
@@ -91,6 +141,20 @@ const sampleData = {
 
 // Validation rules
 const validationRules = {
+  noUndefinedOrNull: {
+    name: 'No undefined/null tokens',
+    test: (text) => {
+      return !/\b(undefined|null|nan)\b/i.test(String(text || ''));
+    },
+    message: 'Found undefined/null/NaN token',
+  },
+  noDoubleSpaces: {
+    name: 'No double spaces',
+    test: (text) => {
+      return !/\s{2,}/.test(String(text || ''));
+    },
+    message: 'Found repeated whitespace',
+  },
   noDuplicateWords: {
     name: 'No duplicate consecutive words',
     test: (text) => {
@@ -139,6 +203,18 @@ const validationRules = {
       return text.length > 50 && text.length < 5000;
     },
     message: 'Prompt length is unreasonable',
+  },
+  noWeirdPunctuation: {
+    name: 'No weird punctuation / spacing',
+    test: (text) => {
+      const t = String(text || '');
+      // No spaces before punctuation, no repeated punctuation like ,, or ..
+      if (/\s+[,.!?;:]/.test(t)) return false;
+      if (/[,.!?;:]{2,}/.test(t)) return false;
+      if (/,\s*,/.test(t)) return false;
+      return true;
+    },
+    message: 'Suspicious punctuation detected',
   },
   noMixedPlurals: {
     name: 'No mixed singular/plural',
@@ -219,7 +295,11 @@ function displayResults(mode, testNum, prompt, validation) {
   
   console.log('\n📝 GENERATED PROMPT:');
   console.log('-'.repeat(80));
-  console.log(prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''));
+  if (mode === 'nsfw') {
+    console.log('[REDACTED: NSFW prompt sample omitted from logs]');
+  } else {
+    console.log(prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''));
+  }
   console.log('-'.repeat(80));
   
   console.log('\n✨ VALIDATION RESULTS:');
@@ -230,28 +310,48 @@ function displayResults(mode, testNum, prompt, validation) {
 function generateSamplePrompt(mode, data) {
   // Mock implementation of prompt generation for testing
   // This simulates the actual buildPrompt functions with all fixes applied
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
+  const lensSuffix = /\blens\b/i.test(String(data.lens || '').trim()) ? '' : ' lens';
   
   if (mode === 'cinematic') {
     const outfit = data.wardrobe ? `dressed in ${data.wardrobe}` : '';
     const sig = data.sig1 ? `characterized by ${data.sig1}` : '';
     
-    // Avoid double "light" - check if lighting already ends with "light"
-    const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
-    
     return `${data.genre} unfolds with a ${data.shot} of a detailed ${data.role} in a ${data.pose} pose, ${outfit}, ${sig}. ` +
            `The setting unfolds in ${data.environmentTexture} ${data.environment} beneath ${data.weather} skies, ` +
            `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}${data.lightingIntensity ? ` with ${data.lightingIntensity} intensity` : ''}. ` +
            `The audio landscape features ambient soundscape: ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
-           `The visual language is enhanced by ${data.lens} lens, ${data.colorGrade} color grading. ` +
+           `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
+           `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}. ` +
+           `As the scene unfolds: the subject ${data.movement1} ${data.movementManner}, at a ${data.movementPace} pace; ` +
+           `the subject ${data.movement2} ${data.movementManner}, at a ${data.movementPace} pace.`;
+  } else if (mode === 'drone') {
+    const env = data.environmentTexture ? `${data.environmentTexture} ${data.environment}` : data.environment;
+
+    return `An environment-first ${data.genre} with a ${data.shot} focused on ${data.role}, emphasizing ${data.pose}. ` +
+           `The setting unfolds in ${env} beneath ${data.weather} skies, ` +
+           `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}${data.lightingIntensity ? ` with ${data.lightingIntensity} intensity` : ''}. ` +
+           `${data.wardrobe ? `Scene details include ${data.wardrobe}. ` : ''}` +
+           `The audio landscape features ambient soundscape: ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
+           `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
+           `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}. ` +
+           `As the scene unfolds: the camera ${data.movement1} ${data.movementManner}, at a ${data.movementPace} pace; ` +
+           `the camera ${data.movement2} ${data.movementManner}, at a ${data.movementPace} pace.`;
+  } else if (mode === 'animation') {
+    const outfit = data.wardrobe ? `dressed in ${data.wardrobe}` : '';
+    const sig = data.sig1 ? `characterized by ${data.sig1}` : '';
+
+    return `${data.genre} unfolds with a ${data.shot} of a stylized ${data.role} in a ${data.pose} pose, ${outfit}, ${sig}. ` +
+           `The setting unfolds in ${data.environmentTexture} ${data.environment} beneath ${data.weather} skies, ` +
+           `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}${data.lightingIntensity ? ` with ${data.lightingIntensity} intensity` : ''}. ` +
+           `The audio landscape features ambient soundscape: ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
+           `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
            `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}. ` +
            `As the scene unfolds: the subject ${data.movement1} ${data.movementManner}, at a ${data.movementPace} pace; ` +
            `the subject ${data.movement2} ${data.movementManner}, at a ${data.movementPace} pace.`;
   } else if (mode === 'classic') {
     const outfit = data.wardrobe ? `attired in ${data.wardrobe}` : '';
     const env = data.environmentTexture ? `${data.environmentTexture} ${data.environment}` : data.environment;
-    
-    // Avoid double "light"
-    const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
     
     return `A ${data.shot} capturing a ${data.genre} aesthetic that features ${data.role}, ${outfit}, ` +
            `set within ${env}, under ${data.lighting}${lightingSuffix} illumination${data.lightingIntensity ? ` with ${data.lightingIntensity} intensity` : ''}, ` +
@@ -262,13 +362,11 @@ function generateSamplePrompt(mode, data) {
     const outfit = data.wardrobe ? `attired in ${data.wardrobe}` : '';
     const env = data.environmentTexture ? `${data.environmentTexture} ${data.environment}` : data.environment;
     
-    const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
-    
     return `An intimate scene unfolds with a ${data.shot} of a sensual ${data.role} in a ${data.pose} pose, ${outfit}. ` +
            `The setting unfolds in ${env} beneath ${data.weather} conditions, ` +
            `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}${data.lightingIntensity ? ` with ${data.lightingIntensity} intensity` : ''}. ` +
            `The audio landscape features ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
-           `The visual language is enhanced by ${data.lens} lens, ${data.colorGrade} color grading, ` +
+          `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading, ` +
            `characterized by ${data.sig1} and ${data.sig2}. ` +
            `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}.`;
   }

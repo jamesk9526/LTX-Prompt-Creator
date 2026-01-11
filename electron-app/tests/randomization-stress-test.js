@@ -58,20 +58,21 @@ function generateRandomSet() {
 }
 
 function generateCinematicPrompt(data) {
-  const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
+  const lensSuffix = /\blens\b/i.test(String(data.lens || '').trim()) ? '' : ' lens';
   
   return (
     `${data.genre} unfolds with a ${data.shot} of a detailed ${data.role} in a ${data.pose} pose, dressed in ${data.wardrobe}, ` +
     `characterized by ${data.sig1}. The setting unfolds in weathered ${data.environment} beneath ${data.weather} skies, ` +
     `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}. ` +
     `The audio landscape features ambient soundscape: ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
-    `The visual language is enhanced by ${data.lens} lens, ${data.colorGrade} color grading. ` +
+    `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
     `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}.`
   );
 }
 
 function generateClassicPrompt(data) {
-  const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
   
   return (
     `A ${data.shot} capturing a ${data.genre} aesthetic that features ${data.role}, attired in ${data.wardrobe}, ` +
@@ -82,15 +83,43 @@ function generateClassicPrompt(data) {
 }
 
 function generateNsfwPrompt(data) {
-  const lightingSuffix = data.lighting.toLowerCase().endsWith('light') ? '' : ' light';
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
+  const lensSuffix = /\blens\b/i.test(String(data.lens || '').trim()) ? '' : ' lens';
   
   return (
     `An intimate scene unfolds with a ${data.shot} of a sensual ${data.role} in a ${data.pose} pose, attired in ${data.wardrobe}. ` +
     `The setting unfolds in ${data.environment} beneath ${data.weather} conditions, ` +
     `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}. ` +
     `The audio landscape features ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
-    `The visual language is enhanced by ${data.lens} lens, ${data.colorGrade} color grading, ` +
+    `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading, ` +
     `characterized by ${data.sig1} and ${data.sig2}. ` +
+    `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}.`
+  );
+}
+
+function generateDronePrompt(data) {
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
+  const lensSuffix = /\blens\b/i.test(String(data.lens || '').trim()) ? '' : ' lens';
+  return (
+    `An environment-first ${data.genre} with a ${data.shot} focused on ${data.role}, emphasizing ${data.pose}. ` +
+    `The setting unfolds in ${data.environment} beneath ${data.weather} skies, ` +
+    `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}. ` +
+    `Scene details include ${data.wardrobe}. ` +
+    `The audio landscape features ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
+    `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
+    `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}.`
+  );
+}
+
+function generateAnimationPrompt(data) {
+  const lightingSuffix = /(light|lighting|illumination)\s*$/i.test(String(data.lighting || '').trim()) ? '' : ' light';
+  const lensSuffix = /\blens\b/i.test(String(data.lens || '').trim()) ? '' : ' lens';
+  return (
+    `${data.genre} unfolds with a ${data.shot} of a stylized ${data.role} in a ${data.pose} pose, dressed in ${data.wardrobe}, ` +
+    `characterized by ${data.sig1}. The setting unfolds in weathered ${data.environment} beneath ${data.weather} skies, ` +
+    `bathed in ${data.lighting}${lightingSuffix} that ${data.lightInteraction}. ` +
+    `The audio landscape features ambient soundscape: ${data.sound}, layered with ${data.sfx}, underscored by ${data.music}. ` +
+    `The visual language is enhanced by ${data.lens}${lensSuffix}, ${data.colorGrade} color grading. ` +
     `Throughout, the camera ${data.cameraMove}, drawing focus toward ${data.focusTarget}.`
   );
 }
@@ -123,10 +152,12 @@ function runRandomizationStress() {
   console.log('Simulating repeated "Randomize All" button clicks');
   console.log('='.repeat(100));
 
-  const modes = ['cinematic', 'classic', 'nsfw'];
+  const modes = ['cinematic', 'classic', 'drone', 'animation', 'nsfw'];
   const generatorsMap = {
     cinematic: generateCinematicPrompt,
     classic: generateClassicPrompt,
+    drone: generateDronePrompt,
+    animation: generateAnimationPrompt,
     nsfw: generateNsfwPrompt,
   };
 
