@@ -30,7 +30,6 @@
       "buildResources": "assets",
       "output": "release"
     },
-    "license": "assets/installer/LICENSE.txt",
     "files": [
       "./out",
       "./electron",

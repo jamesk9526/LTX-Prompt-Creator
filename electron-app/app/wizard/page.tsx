@@ -12,6 +12,80 @@ const FAVORITES_STORAGE_KEY = 'ltx_prompter_favorites_v1';
 const HISTORY_STORAGE_KEY = 'ltx_prompter_history_v1';
 const LOCKED_STEPS_STORAGE_KEY = 'ltx_prompter_locked_steps_v1';
 const OLLAMA_SETTINGS_STORAGE_KEY = 'ltx_prompter_ollama_settings_v1';
+const CHAT_SETTINGS_STORAGE_KEY = 'ltx_prompter_chat_settings_v1';
+
+// Nicole's core personality and capabilities (hidden from user, always applied)
+const NICOLE_BASE_SYSTEM_PROMPT = `You are Nicole, a professional AI assistant and expert in creative prompt writing and video production.
+
+OUTPUT BEHAVIOR (CRITICAL):
+- When expanding or refining prompts: Output ONLY the expanded prompt in a markdown code block (\`\`\`prompt ... \`\`\`)
+- NO preamble, NO explanation, NO extra text - just the refined prompt
+- Exception: If user explicitly asks for feedback, explanation, or critique, then provide brief professional feedback THEN the markup
+- Single focus: Get the refined prompt into the markup so users can copy it immediately
+
+Your communication style:
+- KEEP RESPONSES SHORT AND TO THE POINT
+- 2-3 sentences maximum unless detailed explanation is specifically requested
+- Professional and expert tone at all times
+- NEVER use emojis, emoticons, or excessive punctuation
+- Cut the fluff - deliver pure value
+- Use bullet points when listing multiple items
+- Get straight to the answer, skip the preamble
+
+Formatting for prompts:
+- When providing or refining prompts, wrap them in markdown code blocks with \`\`\`prompt identifier
+- Example: \`\`\`prompt\nYour full prompt text here\n\`\`\`
+- This allows users to easily copy and paste the output
+- Always mark prompts clearly so they're easy to extract
+- ONLY the actual prompt text goes in the code block - no extra commentary
+
+Your expertise:
+- Expert-level knowledge in video prompt engineering and creative direction
+- Deep understanding of cinematography, lighting, and visual storytelling
+- Professional insights on shot composition, camera movements, and editing techniques
+- Skilled at refining vague ideas into precise, actionable prompts
+
+Your approach:
+- Understand the user's intent quickly and accurately
+- Provide expert, actionable guidance immediately
+- When something needs improvement, state what and how concisely
+- Deliver professional-grade advice with authority
+
+Remember: Be brief, precise, and professional. Prioritize the markup output - users need the refined prompt, not commentary.`;
+
+// LTX Video Model Context
+const LTX_CONTEXT = `LTX VIDEO MODEL INFORMATION:
+LTX is a state-of-the-art text-to-video generation model optimized for professional video creation. It excels at:
+
+Strengths:
+- Natural motion and character movement
+- Complex camera movements and perspectives
+- Cinematic lighting and atmospheric effects
+- Detailed scene composition and environment interactions
+- High-quality character performances with subtle emotions
+- Audio-visual synchronization
+- Long-form coherent video generation
+
+Best practices for LTX prompts:
+- Be specific with camera angles and movements (wide shot, push-in, crane rise, etc.)
+- Describe lighting with technical accuracy (volumetric shafts, rim light, practical lamps)
+- Include integrated audio/sound design descriptions chronologically with visuals
+- Use present-progressive verbs for continuous action ("is walking" not "walks")
+- Specify character details: hair, clothing, expressions, posture
+- Describe environmental interactions and object relationships clearly
+- Include temporal connectors: as, then, while, before, after
+- For movement: be explicit about pace, manner, direction (smoothly, deliberately, quickly)
+- Avoid vague terms; replace "colorful" with specific colors, "bright" with "soft" or "harsh"
+- Keep prompts structured but written as natural continuous narrative
+
+Common LTX prompt structure:
+1. Style and visual treatment
+2. Scene setup and environment
+3. Character description and positioning
+4. Primary action and movement
+5. Camera work and framing
+6. Lighting design
+7. Audio elements (background, effects, speech if present)`;
 
 type CaptureWord = 'shot' | 'video' | 'clip' | 'frame';
 
@@ -66,7 +140,7 @@ type OllamaSettings = {
 };
 
 const DEFAULT_OLLAMA_SETTINGS: OllamaSettings = {
-  enabled: false,
+  enabled: true,
   apiEndpoint: 'http://localhost:11434',
   model: 'llama2',
   systemInstructions: `You are a Creative Assistant. Given a user's raw input prompt describing a scene or concept, expand it into a detailed video generation prompt with specific visuals and integrated audio to guide a text-to-video model.
@@ -469,8 +543,20 @@ export default function WizardPage() {
   const [visualEmphasis, setVisualEmphasis] = useState(60);
   const [audioEmphasis, setAudioEmphasis] = useState(60);
   const [batchCount, setBatchCount] = useState(3);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMinimized, setChatMinimized] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatModel, setChatModel] = useState('');
+  const [historyViewModalOpen, setHistoryViewModalOpen] = useState(false);
+  const [historyViewModalText, setHistoryViewModalText] = useState('');
+  const [chatSystemPrompt, setChatSystemPrompt] = useState('Focus on video prompts for the LTX Video model. Help users create detailed, cinematic prompts with proper shot descriptions, lighting, and audio elements. CRITICAL: When expanding or refining prompts, output ONLY the expanded prompt in a markdown code block (```prompt ... ```) unless the user explicitly asks for feedback or explanation. The markup should contain only the refined prompt text, nothing else.');
+  const [chatSystemPromptModalOpen, setChatSystemPromptModalOpen] = useState(false);
+  const [chatSending, setChatSending] = useState(false);
   const didHydrateRef = useRef(false);
   const didHydrateOptionSetsRef = useRef(false);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Load persisted settings after mount to avoid SSR/CSR hydration mismatches.
     const loadedOptionSets = loadOptionSets();
@@ -504,6 +590,11 @@ export default function WizardPage() {
       if (loadedOllamaSettings.enabled) {
         fetchOllamaModels();
       }
+    }
+    // Load chat settings
+    const loadedChatSettings = loadChatSettings();
+    if (loadedChatSettings?.chatModel) {
+      setChatModel(loadedChatSettings.chatModel);
     }
     // Load prompt history
     try {
@@ -554,8 +645,21 @@ export default function WizardPage() {
   }, [lockedSteps]);
 
   useEffect(() => {
+    if (!didHydrateRef.current) return;
     saveOllamaSettings(ollamaSettings);
   }, [ollamaSettings]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    saveChatSettings({ chatModel });
+  }, [chatModel]);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when messages update
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [chatMessages, chatSending]);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -941,16 +1045,16 @@ export default function WizardPage() {
     showToast(`Generated ${count} prompt variations`);
   };
 
-  // Tool: Add prompt to history
+  // Tool: Add prompt to history (unlimited)
   const addToPromptHistory = (prompt: string) => {
     setPromptHistory((prev) => [
       { text: prompt, timestamp: new Date().toISOString(), mode },
-      ...prev.slice(0, 9),
+      ...prev,
     ]);
     try {
       const history = [
         { text: prompt, timestamp: new Date().toISOString(), mode },
-        ...promptHistory.slice(0, 9),
+        ...promptHistory,
       ];
       window.localStorage.setItem('ltx_prompter_prompt_history_v1', JSON.stringify(history));
     } catch {
@@ -1138,6 +1242,95 @@ export default function WizardPage() {
     if (!ollamaResult) return;
     navigator.clipboard.writeText(ollamaResult);
     showToast('Expanded prompt copied to clipboard');
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    if (!ollamaSettings.enabled) {
+      showToast('Ollama is not enabled. Enable it in Settings.');
+      return;
+    }
+
+    const userMessage = chatInput.trim();
+    const modelToUse = chatModel || ollamaSettings.model;
+    
+    // Update chat messages before sending
+    const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage }];
+    setChatMessages(updatedMessages);
+    setChatInput('');
+    // Reset textarea height
+    if (chatInputRef.current) {
+      chatInputRef.current.style.height = 'auto';
+    }
+    setChatSending(true);
+
+    try {
+      const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [
+            {
+              role: 'system',
+              content: `${NICOLE_BASE_SYSTEM_PROMPT}\n\n${LTX_CONTEXT}\n\nAdditional context:\n${chatSystemPrompt}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+            },
+            ...updatedMessages,
+          ],
+          stream: true,
+          options: {
+            temperature: ollamaSettings.temperature,
+          },
+          keep_alive: 0,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedText = '';
+
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n').filter((line) => line.trim());
+
+          for (const line of lines) {
+            try {
+              const json = JSON.parse(line);
+              if (json.message?.content) {
+                accumulatedText += json.message.content;
+                setChatMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role: 'assistant', content: accumulatedText };
+                  return updated;
+                });
+              }
+            } catch (e) {
+              // Skip invalid JSON lines
+            }
+          }
+        }
+      }
+
+      setTimeout(() => {
+        unloadOllamaModel(modelToUse);
+      }, 1000);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to connect to Ollama';
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${errorMsg}` }]);
+      showToast(`Chat error: ${errorMsg}`);
+    } finally {
+      setChatSending(false);
+    }
   };
 
   // Project management
@@ -2361,8 +2554,8 @@ export default function WizardPage() {
             <div className="settings-head">
               <div>
                 <p className="eyebrow">Prompt History</p>
-                <h3 className="settings-title">Recent prompts</h3>
-                <p className="hint">Quick access to your last 10 generated prompts.</p>
+                <h3 className="settings-title">All your prompts</h3>
+                <p className="hint">Search, refine, and interact with your complete prompt library.</p>
               </div>
               <button className="ghost" type="button" onClick={() => setHistoryOpen(false)}>Close</button>
             </div>
@@ -2380,6 +2573,9 @@ export default function WizardPage() {
                       className="history-search"
                       aria-label="Filter history"
                     />
+                    <div className="history-stats">
+                      {promptHistory.length} total
+                    </div>
                     {historyFilter && (
                       <button
                         className="ghost small"
@@ -2387,7 +2583,7 @@ export default function WizardPage() {
                         onClick={() => setHistoryFilter('')}
                         title="Clear filter"
                       >
-                        ✕
+                        Clear
                       </button>
                     )}
                   </div>
@@ -2399,51 +2595,79 @@ export default function WizardPage() {
                         item.text.toLowerCase().includes(historyFilter.toLowerCase()) ||
                         item.mode.toLowerCase().includes(historyFilter.toLowerCase())
                       )
-                      .map((item, idx) => (
-                        <div key={idx} className="history-item-card">
-                          <div className="history-header">
-                            <span className="mode-badge">{item.mode}</span>
-                            <span className="history-time">
-                              {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                      .map((item, idx) => {
+                        const date = new Date(item.timestamp);
+                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const dateStr = date.toLocaleDateString();
+                        return (
+                          <div key={idx} className="history-item-card">
+                            <div className="history-header">
+                              <div className="history-meta">
+                                <span className="mode-badge">{item.mode}</span>
+                                <span className="history-date" title={dateStr}>{dateStr}</span>
+                              </div>
+                              <span className="history-time">{timeStr}</span>
+                            </div>
+                            <p className="history-preview">{item.text.substring(0, 200)}{item.text.length > 200 ? '…' : ''}</p>
+                            <div className="history-item-actions">
+                              <button
+                                className="ghost small"
+                                type="button"
+                                title="Copy to clipboard"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(item.text);
+                                  showToast('Copied to clipboard');
+                                }}
+                              >
+                                Copy
+                              </button>
+                              <button
+                                className="ghost small"
+                                type="button"
+                                title="Send to chat for refinement"
+                                onClick={() => {
+                                  setChatInput(`Refine this prompt: ${item.text}`);
+                                  setChatMessages([...chatMessages, { role: 'user', content: `Refine this prompt: ${item.text}` }]);
+                                  setChatOpen(true);
+                                  setTimeout(() => sendChatMessage(), 0);
+                                }}
+                              >
+                                Chat
+                              </button>
+                              <button
+                                className="ghost small"
+                                type="button"
+                                title="View full text in lightbox"
+                                onClick={() => {
+                                  setHistoryViewModalText(item.text);
+                                  setHistoryViewModalOpen(true);
+                                }}
+                              >
+                                View
+                              </button>
+                              <button
+                                className="ghost small danger"
+                                type="button"
+                                title="Remove from history"
+                                onClick={() => {
+                                  setPromptHistory((prev) => {
+                                    const updated = prev.filter((_, i) => i !== idx);
+                                    try {
+                                      window.localStorage.setItem('ltx_prompter_prompt_history_v1', JSON.stringify(updated));
+                                    } catch {
+                                      // ignore
+                                    }
+                                    return updated;
+                                  });
+                                  showToast('Removed from history');
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-                          <p className="history-preview">{item.text.substring(0, 160)}…</p>
-                          <div className="history-item-actions">
-                            <button
-                              className="ghost small"
-                              type="button"
-                              title="Copy to clipboard"
-                              onClick={() => {
-                                navigator.clipboard.writeText(item.text);
-                                showToast('Copied');
-                              }}
-                            >
-                              📋 Copy
-                            </button>
-                            <button
-                              className="ghost small"
-                              type="button"
-                              title="View full text"
-                              onClick={() => {
-                                showToast('Full prompt loaded');
-                              }}
-                            >
-                              👁️ View
-                            </button>
-                            <button
-                              className="ghost small danger"
-                              type="button"
-                              title="Remove from history"
-                              onClick={() => {
-                                setPromptHistory((prev) => prev.filter((_, i) => i !== idx));
-                                showToast('Removed from history');
-                              }}
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                   
                   {promptHistory.filter((item) => 
@@ -3456,6 +3680,20 @@ export default function WizardPage() {
                   >
                     Hide
                   </button>
+                  {ollamaSettings.enabled && (
+                    <button
+                      className="ghost tiny"
+                      type="button"
+                      onClick={() => {
+                        setChatInput(prompt);
+                        setChatOpen(true);
+                        showToast('Prompt sent to chat');
+                      }}
+                      title="Send prompt to chat"
+                    >
+                      💬 Chat
+                    </button>
+                  )}
                 </div>
               </div>
               <pre key={previewAnimTick} className="preview-text">
@@ -3541,6 +3779,15 @@ export default function WizardPage() {
       <footer className="sticky-nav" role="navigation" aria-label="Wizard navigation">
         <div className="sticky-nav-inner">
           <button
+            className={`icon-btn chat-nav-btn ${ollamaSettings.enabled ? 'enabled' : 'disabled'}`}
+            type="button"
+            onClick={() => setChatOpen(!chatOpen)}
+            title={ollamaSettings.enabled ? 'Chat with Ollama' : 'Enable Ollama in Settings'}
+            aria-label="Open Ollama chat"
+          >
+            💬
+          </button>
+          <button
             className="ghost"
             type="button"
             onClick={handleBack}
@@ -3573,6 +3820,338 @@ export default function WizardPage() {
           </button>
         </div>
       </footer>
+
+      {/* Chat Panel */}
+      {chatOpen && (
+        <div className={`chat-panel ${chatMinimized ? 'minimized' : ''}`}>
+          <div className="chat-header">
+            <div className="chat-header-left">
+              <h3>Prompt Chat — Powered by Ollama</h3>
+              {!chatMinimized && (
+                <select
+                  className="chat-model-selector"
+                  value={chatModel || ollamaSettings.model}
+                  onChange={(e) => setChatModel(e.target.value)}
+                  disabled={!ollamaSettings.enabled}
+                >
+                  {ollamaAvailableModels.length > 0 ? (
+                    ollamaAvailableModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))
+                  ) : (
+                    <option value={ollamaSettings.model}>{ollamaSettings.model}</option>
+                  )}
+                </select>
+              )}
+            </div>
+            <div className="chat-header-actions">
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  setChatMessages([]);
+                  setChatInput('');
+                  showToast('Chat cleared');
+                }}
+                title="Start a new conversation"
+                aria-label="Start new chat"
+              >
+                New
+              </button>
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  const contextMessage = `App Context:
+- Current Mode: ${labelForMode(mode)}
+- Tone: ${editorTone.charAt(0).toUpperCase() + editorTone.slice(1)}
+- Visual Detail: ${detailLabelFor(visualEmphasis)}
+- Audio Emphasis: ${audioLabelFor(audioEmphasis)}
+- Batch Count: ${batchCount}
+
+CURRENT FULL PREVIEW PROMPT:
+${prompt}
+
+Please review this context and let me know how I can optimize my prompts for the LTX model.`;
+                  setChatInput(contextMessage);
+                  setChatMessages([...chatMessages, { role: 'user', content: contextMessage }]);
+                  setTimeout(() => sendChatMessage(), 0);
+                }}
+                title="Gather app context and send to Nicole"
+                aria-label="Gather context"
+              >
+                Context
+              </button>
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  // Find the last assistant message with code block
+                  for (let i = chatMessages.length - 1; i >= 0; i--) {
+                    if (chatMessages[i].role === 'assistant') {
+                      const codeMatch = chatMessages[i].content.match(/```prompt\n([\s\S]*?)\n```/);
+                      if (codeMatch) {
+                        const promptText = codeMatch[1].trim();
+                        // Create a paste-ready message for the preview
+                        navigator.clipboard.writeText(promptText);
+                        showToast('Prompt copied to clipboard - paste into preview');
+                        return;
+                      }
+                    }
+                  }
+                  showToast('No prompt found in chat');
+                }}
+                title="Copy last expanded prompt to clipboard"
+                aria-label="Copy prompt"
+              >
+                Copy
+              </button>
+              <button
+                className="icon-btn small"
+                type="button"
+                onClick={() => setChatSystemPromptModalOpen(true)}
+                title="Edit system prompt"
+                aria-label="Edit system prompt"
+              >
+                ⚙️
+              </button>
+              <button
+                className="icon-btn small"
+                type="button"
+                onClick={() => setChatMinimized(!chatMinimized)}
+                title={chatMinimized ? 'Maximize' : 'Minimize'}
+                aria-label={chatMinimized ? 'Maximize chat' : 'Minimize chat'}
+              >
+                {chatMinimized ? '▲' : '▼'}
+              </button>
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  setChatOpen(false);
+                  setChatMessages([]);
+                  setChatMinimized(false);
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          {!chatMinimized && (
+            <>
+              <div className="chat-messages" ref={chatMessagesRef}>
+            {chatMessages.length === 0 && (
+              <div className="chat-empty">
+                <p>Hi, I&apos;m Nicole. Let me help you craft better video prompts.</p>
+                <div className="suggested-messages">
+                  <button
+                    className="suggested-msg-btn"
+                    onClick={() => {
+                      const msg = "Help me improve this prompt for better visual quality";
+                      setChatInput(msg);
+                      setChatMessages([{ role: 'user', content: msg }]);
+                      setTimeout(() => sendChatMessage(), 0);
+                    }}
+                  >
+                    Improve a prompt
+                  </button>
+                  <button
+                    className="suggested-msg-btn"
+                    onClick={() => {
+                      const msg = "What elements should a cinematic video prompt include?";
+                      setChatInput(msg);
+                      setChatMessages([{ role: 'user', content: msg }]);
+                      setTimeout(() => sendChatMessage(), 0);
+                    }}
+                  >
+                    Learn about prompt structure
+                  </button>
+                  <button
+                    className="suggested-msg-btn"
+                    onClick={() => {
+                      const msg = "How do I describe camera movement effectively?";
+                      setChatInput(msg);
+                      setChatMessages([{ role: 'user', content: msg }]);
+                      setTimeout(() => sendChatMessage(), 0);
+                    }}
+                  >
+                    Camera movement tips
+                  </button>
+                  <button
+                    className="suggested-msg-btn"
+                    onClick={() => {
+                      const msg = "How do I write lighting descriptions for video?";
+                      setChatInput(msg);
+                      setChatMessages([{ role: 'user', content: msg }]);
+                      setTimeout(() => sendChatMessage(), 0);
+                    }}
+                  >
+                    Lighting guidance
+                  </button>
+                </div>
+              </div>
+            )}
+            {chatMessages.map((msg, idx) => {
+              // Parse markdown code blocks for display
+              const parts = msg.content.split(/(```[\s\S]*?```)/);
+              return (
+                <div key={idx} className={`chat-message ${msg.role}`}>
+                  <div className="chat-message-role">{msg.role === 'user' ? 'You' : 'Nicole'}</div>
+                  <div className="chat-message-content">
+                    {parts.map((part, i) => {
+                      if (part.startsWith('```') && part.endsWith('```')) {
+                        const codeContent = part.slice(3, -3).trim();
+                        const lines = codeContent.split('\n');
+                        const codeType = lines[0];
+                        const actualCode = lines.slice(1).join('\n');
+                        
+                        return (
+                          <div key={i} className="code-block">
+                            <div className="code-block-header">
+                              <span className="code-type">{codeType || 'code'}</span>
+                              <div className="code-block-buttons">
+                                <button
+                                  className="code-copy-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(actualCode);
+                                    showToast('Copied to clipboard');
+                                  }}
+                                  title="Copy to clipboard"
+                                >
+                                  Copy
+                                </button>
+                                <button
+                                  className="code-copy-btn"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(actualCode);
+                                    showToast('Prompt copied - paste into preview');
+                                  }}
+                                  title="Copy and prepare to paste to preview"
+                                >
+                                  Use
+                                </button>
+                                {codeType === 'prompt' && (
+                                  <button
+                                    className="code-copy-btn"
+                                    onClick={() => {
+                                      addToPromptHistory(actualCode);
+                                      showToast('Saved to history');
+                                    }}
+                                    title="Save prompt to history"
+                                  >
+                                    Save
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <pre className="code-block-content">{actualCode}</pre>
+                          </div>
+                        );
+                      }
+                      return part ? <p key={i}>{part}</p> : null;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {chatSending && (
+              <div className="chat-message assistant">
+                <div className="chat-message-role">Nicole</div>
+                <div className="chat-message-content chat-typing">Thinking...</div>
+              </div>
+            )}
+          </div>
+
+          <div className="chat-input-area">
+            <textarea
+              ref={chatInputRef}
+              className="chat-input"
+              value={chatInput}
+              onChange={(e) => {
+                setChatInput(e.target.value);
+                // Auto-resize textarea
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendChatMessage();
+                }
+              }}
+              placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
+              disabled={!ollamaSettings.enabled || chatSending}
+              rows={1}
+            />
+            <button
+              className="primary"
+              type="button"
+              onClick={sendChatMessage}
+              disabled={!ollamaSettings.enabled || chatSending || !chatInput.trim()}
+            >
+              {chatSending ? 'Sending...' : 'Send'}
+            </button>
+          </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* System Prompt Modal */}
+      {chatSystemPromptModalOpen && (
+        <div className="settings-overlay" onMouseDown={() => setChatSystemPromptModalOpen(false)}>
+          <div className="settings-panel chat-system-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="settings-head">
+              <div>
+                <h3 className="settings-title">Chat System Prompt</h3>
+                <p className="hint">Define how the AI assistant should behave in chat conversations.</p>
+              </div>
+              <button className="ghost" type="button" onClick={() => setChatSystemPromptModalOpen(false)}>Close</button>
+            </div>
+            <div className="settings-body" style={{gridTemplateColumns: '1fr'}}>
+              <textarea
+                className="chat-system-textarea-modal"
+                value={chatSystemPrompt}
+                onChange={(e) => setChatSystemPrompt(e.target.value)}
+                placeholder="Define how the AI should behave..."
+                rows={8}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History View Modal Lightbox */}
+      {historyViewModalOpen && (
+        <div className="settings-overlay" onMouseDown={() => setHistoryViewModalOpen(false)}>
+          <div className="settings-panel history-view-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="settings-head">
+              <div>
+                <h3 className="settings-title">Full Prompt</h3>
+                <p className="hint">Complete prompt text from history</p>
+              </div>
+              <button 
+                className="ghost small" 
+                type="button" 
+                onClick={() => {
+                  navigator.clipboard.writeText(historyViewModalText);
+                  showToast('Copied to clipboard');
+                }}
+                title="Copy to clipboard"
+              >
+                Copy
+              </button>
+              <button className="ghost" type="button" onClick={() => setHistoryViewModalOpen(false)}>Close</button>
+            </div>
+            <div className="settings-body history-view-body" style={{gridTemplateColumns: '1fr'}}>
+              <div className="history-view-content">
+                {historyViewModalText}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -4503,6 +5082,26 @@ function saveOllamaSettings(settings: OllamaSettings) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(OLLAMA_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // ignore
+  }
+}
+
+function loadChatSettings(): { chatModel: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(CHAT_SETTINGS_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveChatSettings(settings: { chatModel: string }) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(CHAT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch {
     // ignore
   }
