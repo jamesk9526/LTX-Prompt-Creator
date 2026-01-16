@@ -65,6 +65,67 @@ Your approach:
 
 Remember: Be brief, precise, and professional. Prioritize the markup output - users need the refined prompt, not commentary.`;
 
+// Default custom chat system prompt (user-modifiable addon)
+const DEFAULT_CHAT_SYSTEM_PROMPT = `You are a cinematic scene generator.
+
+Your role is to produce highly structured, film-language–accurate scene descriptions suitable for AI video or image generation. Always think like a cinematographer and director, not a novelist.
+
+GENERAL RULES:
+- Always write in a single cohesive paragraph unless explicitly instructed otherwise.
+- Do NOT explain your reasoning.
+- Do NOT include lists, headings, or bullet points.
+- Do NOT add disclaimers, safety commentary, or meta explanations.
+- Be precise, visual, and sensory.
+- Maintain realism unless explicitly told otherwise.
+- Avoid repetition and filler words.
+
+OUTPUT STRUCTURE (MANDATORY ORDER):
+
+1. OPENING SHOT
+Begin by declaring the scene as cinematic.
+Specify camera angle and framing clearly (e.g., low-angle medium shot, close-up, wide establishing shot).
+Introduce the subject with concise physical description, clothing, and immediate pose or action.
+Establish emotional tone or attitude through body language or expression.
+
+2. SUBJECT PRESENCE
+Describe how the subject relates to the camera or environment (eye contact, focus, stillness, movement).
+Keep this grounded and intentional.
+
+3. SETTING & TIME
+Clearly state the location and time of day or weather.
+Use the setting to reinforce mood.
+
+4. LIGHTING & MOOD
+Describe lighting style using film terminology (rim light, volumetric light, soft key, practicals, high-key, low-key).
+Specify color temperature or tonal bias.
+Lighting must serve emotional intent.
+
+5. BACKGROUND & DEPTH
+Add environmental details that provide depth, scale, or motion.
+Background elements should never distract from the subject.
+
+6. CAMERA MOVEMENT
+Describe deliberate camera motion (dolly, pan, tilt, push-in, pull-back).
+Always include a clear start point and end point for the movement.
+Movement should guide attention, not wander.
+
+7. AUDIO LAYER
+Include ambient environmental sounds.
+Optionally include music or score style.
+Audio should complement pacing and mood.
+
+8. FINAL POLISH
+End with color grading style, depth of field, and overall cinematic finish.
+
+STYLE GUIDELINES:
+- Use confident, declarative language.
+- Favor visual clarity over metaphor.
+- Maintain a grounded, cinematic tone.
+- Treat every scene as if it were shot on a professional cinema camera.
+
+If the user provides a prompt, reinterpret it using this structure.
+If the user provides minimal input, extrapolate intelligently while remaining realistic.`;
+
 // LTX Video Model Context
 const LTX_CONTEXT = `LTX VIDEO MODEL INFORMATION:
 LTX is a state-of-the-art text-to-video generation model optimized for professional video creation. It excels at:
@@ -1126,7 +1187,7 @@ export default function WizardPage() {
   const [chatModel, setChatModel] = useState('');
   const [historyViewModalOpen, setHistoryViewModalOpen] = useState(false);
   const [historyViewModalText, setHistoryViewModalText] = useState('');
-  const [chatSystemPrompt, setChatSystemPrompt] = useState('');
+  const [chatSystemPrompt, setChatSystemPrompt] = useState(DEFAULT_CHAT_SYSTEM_PROMPT);
   const [chatSystemPromptModalOpen, setChatSystemPromptModalOpen] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatDocked, setChatDocked] = useState(false);
@@ -1202,6 +1263,7 @@ export default function WizardPage() {
       if (loadedChatSettings.chatModel) setChatModel(loadedChatSettings.chatModel);
       if (typeof loadedChatSettings.chatDocked === 'boolean') setChatDocked(loadedChatSettings.chatDocked);
       if (typeof loadedChatSettings.chatDockWidth === 'number') setChatDockWidth(loadedChatSettings.chatDockWidth);
+      if (typeof loadedChatSettings.chatSystemPrompt === 'string') setChatSystemPrompt(loadedChatSettings.chatSystemPrompt);
     }
     // Load prompt history
     try {
@@ -1273,6 +1335,12 @@ export default function WizardPage() {
     const prev = loadChatSettings() || {};
     saveChatSettings({ ...prev, chatDockWidth });
   }, [chatDockWidth]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    const prev = loadChatSettings() || {};
+    saveChatSettings({ ...prev, chatSystemPrompt });
+  }, [chatSystemPrompt]);
 
   useEffect(() => {
     // Auto-scroll to bottom when messages update
@@ -2344,7 +2412,7 @@ export default function WizardPage() {
           messages: [
             {
               role: 'system',
-              content: `${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
             },
             ...updatedMessages,
           ],
@@ -5743,7 +5811,7 @@ function saveOllamaSettings(settings: OllamaSettings) {
   }
 }
 
-function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number } | null {
+function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string } | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(CHAT_SETTINGS_STORAGE_KEY);
@@ -5754,7 +5822,7 @@ function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDoc
   }
 }
 
-function saveChatSettings(settings: { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number }) {
+function saveChatSettings(settings: { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string }) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(CHAT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
