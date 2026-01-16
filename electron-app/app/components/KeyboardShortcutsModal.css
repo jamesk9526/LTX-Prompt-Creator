@@ -1,0 +1,108 @@
+.shortcuts-modal {
+  min-height: 400px;
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.shortcuts-category {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcuts-category__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0 0 8px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.shortcut-item__keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.shortcut-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 8px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  box-shadow: 0 2px 0 rgba(139, 92, 246, 0.2);
+  text-transform: uppercase;
+}
+
+.shortcut-plus {
+  color: rgba(232, 230, 240, 0.4);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 2px;
+}
+
+.shortcut-item__description {
+  flex: 1;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.shortcuts-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.shortcuts-hint {
+  text-align: center;
+  color: rgba(232, 230, 240, 0.6);
+  font-size: 13px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.shortcuts-hint .shortcut-key {
+  font-size: 12px;
+  min-width: 28px;
+  height: 24px;
+}
+
+@media (max-width: 768px) {
+  .shortcuts-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}

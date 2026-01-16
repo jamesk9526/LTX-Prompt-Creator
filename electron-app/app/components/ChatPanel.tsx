@@ -27,6 +27,14 @@ export interface ChatPanelProps {
   chatAllowControl?: boolean;
   onActions?: (actions: any[]) => void;
   onApplyPrompt?: (promptText: string) => void;
+  actionPreviewOpen?: boolean;
+  actionPreviewRaw?: string;
+  actionPreviewJson?: string;
+  actionPreviewDescriptions?: string[];
+  actionPreviewErrors?: string[];
+  onApplyActionsPreview?: () => void;
+  onCopyActionsJson?: () => void;
+  onCloseActionsPreview?: () => void;
   // Docking controls (optional)
   docked?: boolean;
   onToggleDock?: () => void;
@@ -61,6 +69,14 @@ export default function ChatPanel({
   setChatMinimized,
   chatSending,
   onApplyPrompt,
+  actionPreviewOpen,
+  actionPreviewRaw,
+  actionPreviewJson,
+  actionPreviewDescriptions,
+  actionPreviewErrors,
+  onApplyActionsPreview,
+  onCopyActionsJson,
+  onCloseActionsPreview,
   docked,
   onToggleDock,
   ollamaSettings,
@@ -82,6 +98,38 @@ export default function ChatPanel({
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, chatSending]);
+
+  const parseMessageParts = (content: string) => {
+    const parts: Array<{ type: 'text' | 'code'; text?: string; lang?: string; code?: string }> = [];
+    const regex = /``{2,3}([^\n`]*)\n?([\s\S]*?)``{2,3}/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', text: content.slice(lastIndex, match.index) });
+      }
+
+      const rawLang = (match[1] || '').trim();
+      let lang = rawLang;
+      let code = match[2] ?? '';
+
+      if (!code && rawLang.includes(' ')) {
+        const [token, ...rest] = rawLang.split(/\s+/);
+        lang = token;
+        code = rest.join(' ');
+      }
+
+      parts.push({ type: 'code', lang, code });
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+      parts.push({ type: 'text', text: content.slice(lastIndex) });
+    }
+
+    return parts;
+  };
 
   if (!chatOpen) return null;
 
@@ -273,8 +321,7 @@ Please review this context and let me know how I can optimize my prompts for the
                 </div>
               )}
               {chatMessages.map((msg, idx) => {
-                // Parse markdown code blocks for display
-                const parts = msg.content.split(/(```[\s\S]*?```)/);
+                const parts = parseMessageParts(msg.content);
                 return (
                   <div key={idx} className={`chat-message ${msg.role}`}>
                     <div className="chat-message-row">
@@ -283,16 +330,23 @@ Please review this context and let me know how I can optimize my prompts for the
                         <div className="chat-message-role">{msg.role === 'user' ? 'You' : 'Nicole'}</div>
                         <div className="chat-message-content">
                           {parts.map((part, i) => {
-                            if (part.startsWith('```') && part.endsWith('```')) {
-                              const codeContent = part.slice(3, -3).trim();
-                              const lines = codeContent.split('\n');
-                              const codeType = lines[0];
-                              const actualCode = lines.slice(1).join('\n');
-                              
+                            if (part.type === 'code') {
+                              let codeType = part.lang || '';
+                              let actualCode = part.code || '';
+                              if (!codeType) {
+                                const lines = actualCode.split('\n');
+                                const first = (lines[0] || '').trim();
+                                if (lines.length > 1 && /^[a-zA-Z0-9_-]+$/.test(first)) {
+                                  codeType = first;
+                                  actualCode = lines.slice(1).join('\n');
+                                }
+                              }
+                              const headerType = codeType || 'code';
+
                               return (
                                 <div key={i} className="code-block">
                                   <div className="code-block-header">
-                                    <span className="code-type">{codeType || 'code'}</span>
+                                    <span className="code-type">{headerType}</span>
                                     <div className="code-block-buttons">
                                       <button
                                         className="code-copy-btn"
@@ -314,7 +368,7 @@ Please review this context and let me know how I can optimize my prompts for the
                                       >
                                         Use
                                       </button>
-                                      {codeType === 'prompt' && (
+                                      {headerType === 'prompt' && (
                                         <button
                                           className="code-copy-btn"
                                           onClick={() => {
@@ -326,7 +380,7 @@ Please review this context and let me know how I can optimize my prompts for the
                                           Save
                                         </button>
                                       )}
-                                      {codeType === 'prompt' && (
+                                      {headerType === 'prompt' && (
                                         <button
                                           className="code-copy-btn"
                                           onClick={() => {
@@ -347,7 +401,8 @@ Please review this context and let me know how I can optimize my prompts for the
                                 </div>
                               );
                             }
-                            return part ? <p key={i}>{part}</p> : null;
+                            const text = part.text || '';
+                            return text ? <p key={i}>{text}</p> : null;
                           })}
                         </div>
                       </div>
@@ -367,6 +422,48 @@ Please review this context and let me know how I can optimize my prompts for the
                 </div>
               )}
             </div>
+
+            {actionPreviewOpen && (
+              <div className="chat-action-preview">
+                <div className="chat-action-preview-head">
+                  <div>
+                    <div className="eyebrow">Chat Apply Preview</div>
+                    <div className="hint">Review the LLM response and JSON actions before applying.</div>
+                  </div>
+                  <button className="ghost small" type="button" onClick={onCloseActionsPreview}>
+                    Close
+                  </button>
+                </div>
+                {actionPreviewErrors && actionPreviewErrors.length > 0 && (
+                  <div className="hint" aria-live="polite">{actionPreviewErrors[0]}</div>
+                )}
+                <label className="field">
+                  <span>LLM response (raw)</span>
+                  <textarea value={actionPreviewRaw || ''} readOnly rows={4} />
+                </label>
+                {actionPreviewDescriptions && actionPreviewDescriptions.length > 0 && (
+                  <div className="suggested-list" style={{ marginBottom: '8px' }}>
+                    {actionPreviewDescriptions.map((d, i) => (
+                      <div key={i} className="suggested-item">
+                        <span className="field-label">{d}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className="field">
+                  <span>Actions JSON</span>
+                  <textarea value={actionPreviewJson || ''} readOnly rows={6} />
+                </label>
+                <div className="settings-actions">
+                  <button className="ghost" type="button" onClick={onCopyActionsJson}>
+                    Copy JSON
+                  </button>
+                  <button className="primary" type="button" onClick={onApplyActionsPreview}>
+                    Apply Now
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="chat-input-area">
               <textarea

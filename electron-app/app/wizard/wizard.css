@@ -111,6 +111,31 @@ body {
   letter-spacing: 0.4px;
   color: var(--text);
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsaved-dot {
+  color: #fbbf24;
+  font-size: 10px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.completion-indicator {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .brand-sub {
@@ -657,6 +682,12 @@ body {
 
 .icon-btn:active {
   transform: scale(0.95);
+}
+
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .icon-btn.locked {
@@ -1335,6 +1366,21 @@ button.tiny {
   min-height: 500px;
 }
 
+/* In-chat action preview panel */
+.chat-action-preview {
+  border-top: 1px solid var(--border);
+  padding: 16px 16px 18px;
+  background: rgba(12, 14, 20, 0.85);
+  max-height: 360px;
+  overflow: auto;
+}
+
+.chat-action-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
 .step > * {
   position: relative;
 }
@@ -1729,6 +1775,66 @@ input:checked + .slider::before { transform: translateX(22px); }
   transform: translateX(-50%) translateY(0px);
 }
 
+/* Enhanced tooltip icon */
+.field-tip-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: help;
+  transition: all 180ms ease;
+}
+
+.field-tip-icon:hover {
+  background: rgba(139, 92, 246, 0.22);
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.field-tip-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Enhanced tooltip content */
+.field-tooltip-enhanced {
+  text-align: left;
+  max-width: 320px;
+}
+
+.field-tooltip-description {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.field-tooltip-example {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  border-left: 2px solid var(--accent);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.field-tooltip-example strong {
+  color: var(--accent);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
 select, input, textarea, button {
   font-family: inherit;
 }
@@ -1923,16 +2029,18 @@ textarea {
   width: 100%;
   background: rgba(12, 13, 16, 0.95);
   border-top: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3), 
+              0 -1px 0 rgba(139, 92, 246, 0.15);
+  animation: stickyBarIn 0.3s ease-out;
 }
 
 .sticky-nav-inner {
-  padding: 8px 12px;
+  padding: 10px 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
 }
 
@@ -1950,11 +2058,34 @@ textarea {
 }
 
 .sticky-nav-spacer {
-  height: 64px; /* reserve space so content doesn't sit under the fixed bar */
+  height: 68px; /* reserve space so content doesn't sit under the fixed bar */
+}
+
+/* Enhanced sticky nav buttons */
+.sticky-nav .ghost {
+  padding: 10px 20px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.sticky-nav .primary {
+  padding: 10px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.sticky-nav .primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+}
+
+.sticky-nav .primary:active {
+  transform: translateY(0);
 }
 
 @keyframes stickyBarIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 

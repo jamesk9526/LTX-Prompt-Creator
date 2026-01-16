@@ -10,6 +10,10 @@ import OllamaSidePanel from './modals/OllamaSidePanel';
 import SettingsModal from './modals/SettingsModal';
 import PreviewSidebar from './components/PreviewSidebar';
 import { ActionExecutor } from '../utils/ActionExecutor';
+import { parseActions, getActionDescription, Action } from '../types/actions';
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
+import { Tooltip } from '../components/ui';
+import { getFieldTooltip } from '../utils/fieldTooltips';
 
 type OptionSets = Record<string, Record<string, string[]>>;
 
@@ -775,6 +779,41 @@ const STEP_FIELDS: Record<number, string[]> = {
  22: [],
 };
 
+const normalizeFieldKey = (field: string) => (field || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const ACTION_VALID_FIELDS = Array.from(new Set(Object.values(STEP_FIELDS).flat()));
+const ACTION_NORMALIZED_FIELD_MAP = ACTION_VALID_FIELDS.reduce<Record<string, string>>((acc, field) => {
+  acc[normalizeFieldKey(field)] = field;
+  return acc;
+}, {});
+
+const ACTION_FIELD_ALIASES: Record<string, string> = {
+  shotType: 'shot',
+  shot_type: 'shot',
+  shot_type_notes: 'framingNotes',
+  camera: 'cameraMove',
+  camera_move: 'cameraMove',
+  cameraMovement: 'cameraMove',
+  camera_movement: 'cameraMove',
+  composition: 'framingNotes',
+  framing: 'framingNotes',
+  framing_notes: 'framingNotes',
+  audio: 'sound',
+  soundscape: 'sound',
+  ambience: 'sound',
+  subject: 'mainSubject',
+  main_subject: 'mainSubject',
+  location: 'environment',
+  setting: 'environment',
+  creativeBrief: 'sceneDescription',
+  creative_brief: 'sceneDescription',
+  scene_description: 'sceneDescription',
+  sceneDescription: 'sceneDescription',
+  description: 'sceneDescription',
+  story: 'storyElements',
+  time_of_day: 'timeOfDay',
+};
+
 // Helper: Get step number for a given field
 const getStepForField = (fieldName: string): number | null => {
   for (const [stepNum, fields] of Object.entries(STEP_FIELDS)) {
@@ -1093,7 +1132,32 @@ export default function WizardPage() {
   const [chatDocked, setChatDocked] = useState(false);
   const [chatDockWidth, setChatDockWidth] = useState<number>(360);
   const [isResizingChatDock, setIsResizingChatDock] = useState(false);
+  const chatResizeStartXRef = useRef<number | null>(null);
   const chatResizeStartWidthRef = useRef<number | null>(null);
+  // Keyboard shortcuts modal state
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  // Unsaved changes indicator
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Undo/Redo system
+  const [historyStack, setHistoryStack] = useState<Array<{
+    values: Record<string, Record<string, string>>;
+    mode: ModeId;
+    step: number;
+    timestamp: number;
+  }>>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const isUndoRedoRef = useRef(false);
+  // Action preview modal state
+  const [actionPreviewOpen, setActionPreviewOpen] = useState(false);
+  const [actionPreviewJson, setActionPreviewJson] = useState('');
+  const [actionPreviewActions, setActionPreviewActions] = useState<Action[]>([]);
+  const [actionPreviewErrors, setActionPreviewErrors] = useState<string[]>([]);
+  const [actionPreviewRaw, setActionPreviewRaw] = useState('');
+  const [actionPreviewDescriptions, setActionPreviewDescriptions] = useState<string[]>([]);
+  const [actionPasteJson, setActionPasteJson] = useState('');
+  const actionApplyModeRef = useRef<ModeId>(mode);
   const didHydrateRef = useRef(false);
   const didHydrateOptionSetsRef = useRef(false);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1217,6 +1281,10 @@ export default function WizardPage() {
     }
   }, [chatMessages, chatSending]);
 
+  useEffect(() => {
+    actionApplyModeRef.current = mode;
+  }, [mode]);
+
   // Dock resize handlers
   useEffect(() => {
     if (!isResizingChatDock) return;
@@ -1277,7 +1345,10 @@ export default function WizardPage() {
     return new ActionExecutor(
       {
         onOpenSettings: () => setSettingsOpen(true),
-        onSetMode: (m) => setMode(m as any),
+        onSetMode: (m) => {
+          actionApplyModeRef.current = m as ModeId;
+          setMode(m as any);
+        },
         onSetStep: (n) => setStep(n),
         onEditorToneChange: (t) => setEditorTone(t as any),
         onSetNsfwEnabled: (enabled) => setNsfwEnabled(enabled),
@@ -1285,15 +1356,22 @@ export default function WizardPage() {
         onUpdateUiPref: (updater) => setUiPrefs((prev) => updater(prev)),
         onUpdateOllama: (updater) => setOllamaSettings((prev) => updater(prev)),
         onSetFieldValue: (field, value) =>
-          setValues((prev) => ({ ...prev, [mode]: { ...prev[mode], [field]: value } })),
+          setValues((prev) => {
+            const targetMode = actionApplyModeRef.current || mode;
+            return { ...prev, [targetMode]: { ...prev[targetMode], [field]: value } };
+          }),
         onClearField: (field) =>
           setValues((prev) => {
-            const next = { ...prev, [mode]: { ...prev[mode] } };
-            delete (next[mode] as any)[field];
+            const targetMode = actionApplyModeRef.current || mode;
+            const next = { ...prev, [targetMode]: { ...prev[targetMode] } };
+            delete (next[targetMode] as any)[field];
             return next;
           }),
         onBulkSetValues: (entries) =>
-          setValues((prev) => ({ ...prev, [mode]: { ...prev[mode], ...entries } })),
+          setValues((prev) => {
+            const targetMode = actionApplyModeRef.current || mode;
+            return { ...prev, [targetMode]: { ...prev[targetMode], ...entries } };
+          }),
         onSetChatModel: (model) => setChatModel(model),
         onOpenChatSystemPrompt: () => setChatSystemPromptModalOpen(true),
         onSetChatMinimized: (min) => setChatMinimized(min),
@@ -1302,6 +1380,100 @@ export default function WizardPage() {
       { source: 'chat' }
     );
   }, [mode, showToast]);
+
+  const normalizeFieldName = useCallback((field: string) => {
+    if (!field) return field;
+    if (ACTION_VALID_FIELDS.includes(field)) return field;
+    const alias = ACTION_FIELD_ALIASES[field];
+    if (alias) return alias;
+    const normalized = ACTION_NORMALIZED_FIELD_MAP[normalizeFieldKey(field)];
+    return normalized ?? field;
+  }, []);
+
+  const normalizeActions = useCallback((actions: Action[]) => {
+    return actions.map((action) => {
+      if (action.type === 'setFieldValue') {
+        return { ...action, field: normalizeFieldName(action.field) };
+      }
+      if (action.type === 'clearField') {
+        return { ...action, field: normalizeFieldName(action.field) };
+      }
+      if (action.type === 'bulkSetValues') {
+        const mapped: Record<string, string> = {};
+        for (const [key, value] of Object.entries(action.entries)) {
+          mapped[normalizeFieldName(key)] = value;
+        }
+        return { ...action, entries: mapped };
+      }
+      return action;
+    });
+  }, [normalizeFieldName]);
+
+  const applyActionsJson = useCallback(
+    async (json: string, parsedActions?: Action[]) => {
+      if (!json) return;
+      actionApplyModeRef.current = mode;
+      const actions = parsedActions ?? parseActions(json).actions;
+      const normalized = normalizeActions(actions);
+      await actionExecutor.execute(normalized, { skipErrors: true });
+      if (!actions.some((a) => a.type === 'setStep')) {
+        setStep(2);
+      }
+    },
+    [actionExecutor, mode, normalizeActions]
+  );
+
+  const extractJsonPayload = useCallback((raw: string): string | null => {
+    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fenceMatch ? fenceMatch[1].trim() : raw.trim();
+    const tryParse = (s: string) => {
+      try { JSON.parse(s); return s; } catch { return null; }
+    };
+    const direct = tryParse(candidate);
+    if (direct) return direct;
+    const arrStart = candidate.indexOf('[');
+    const arrEnd = candidate.lastIndexOf(']');
+    if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+      const sliced = candidate.slice(arrStart, arrEnd + 1);
+      const ok = tryParse(sliced);
+      if (ok) return ok;
+    }
+    const objStart = candidate.indexOf('{');
+    const objEnd = candidate.lastIndexOf('}');
+    if (objStart !== -1 && objEnd !== -1 && objEnd > objStart) {
+      const sliced = candidate.slice(objStart, objEnd + 1);
+      const ok = tryParse(sliced);
+      if (ok) return ok;
+    }
+    return null;
+  }, []);
+
+  const handleApplyActionsPreview = useCallback(async () => {
+    await applyActionsJson(actionPreviewJson, actionPreviewActions);
+    showToast('✅ Applied via actions');
+    setActionPreviewOpen(false);
+  }, [applyActionsJson, actionPreviewActions, actionPreviewJson, showToast]);
+
+  const handleCopyActionsJson = useCallback(() => {
+    if (!actionPreviewJson) return;
+    navigator.clipboard.writeText(actionPreviewJson);
+    showToast('Copied actions JSON');
+  }, [actionPreviewJson, showToast]);
+
+  const applyPastedActionsJson = useCallback(
+    async (json: string) => {
+      const cleaned = (json || '').trim();
+      if (!cleaned) return;
+      const payload = extractJsonPayload(cleaned) || cleaned;
+      const { actions, errors } = parseActions(payload);
+      if (errors.length > 0) {
+        showToast(`⚠️ ${errors[0]}`);
+      }
+      await applyActionsJson(payload, actions);
+      showToast('✅ Applied pasted actions');
+    },
+    [applyActionsJson, extractJsonPayload, showToast]
+  );
 
   // Ask the LLM to convert a prompt into UI actions, then execute
   const applyPromptViaActions = useCallback(
@@ -1313,7 +1485,7 @@ export default function WizardPage() {
 
       const modelToUse = chatModel || ollamaSettings.model;
       try {
-        const systemSpec = `You are an assistant that outputs ONLY JSON for UI actions.\n\nTask: Given a creative prompt, produce a JSON array of actions to populate a wizard UI.\nSchema (strict):\n- setFieldValue { type: 'setFieldValue', field: string, value: string }\n- clearField { type: 'clearField', field: string }\n- bulkSetValues { type: 'bulkSetValues', entries: Record<string,string> }\n- setMode { type: 'setMode', value: 'cinematic'|'classic'|'drone'|'animation'|'photography'|'nsfw' }\n- setStep { type: 'setStep', value: number }\n- setEditorTone { type: 'setEditorTone', value: 'melancholic'|'balanced'|'energetic'|'dramatic' }\n- setNSFW { type: 'setNSFW', value: boolean }\n- togglePreview { type: 'togglePreview' }\n- openSettings { type: 'openSettings' }\n- updateUiPref { type: 'updateUiPref', key: string, value: any }\n- updateOllamaSetting { type: 'updateOllamaSetting', key: string, value: any }\n- setChatModel { type: 'setChatModel', value: string }\n- openChatSystemPrompt { type: 'openChatSystemPrompt' }\n- setChatMinimized { type: 'setChatMinimized', value: boolean }\n\nRules:\n- Output ONLY valid JSON (array or single object). No markdown, no prose.\n- Prefer bulkSetValues for multiple field updates.\n- Field names should match the wizard fields (e.g., genre, shotType, composition, lighting, camera, action, audio, etc.).\n- If unsure, set high-level fields (creative_brief/scene_description) and camera/lighting where evident.\n- Do not include a root object wrapper; output the JSON directly.`;
+        const systemSpec = `You are an assistant that outputs ONLY JSON for UI actions.\n\nTask: Given a creative prompt, produce a JSON ARRAY of actions to populate a wizard UI.\nSchema (strict):\n- setFieldValue { type: 'setFieldValue', field: string, value: string }\n- clearField { type: 'clearField', field: string }\n- bulkSetValues { type: 'bulkSetValues', entries: Record<string,string> }\n- setMode { type: 'setMode', value: 'cinematic'|'classic'|'drone'|'animation'|'photography'|'nsfw' }\n- setStep { type: 'setStep', value: number }\n- setEditorTone { type: 'setEditorTone', value: 'melancholic'|'balanced'|'energetic'|'dramatic' }\n- setNSFW { type: 'setNSFW', value: boolean }\n- togglePreview { type: 'togglePreview' }\n- openSettings { type: 'openSettings' }\n- updateUiPref { type: 'updateUiPref', key: string, value: any }\n- updateOllamaSetting { type: 'updateOllamaSetting', key: string, value: any }\n- setChatModel { type: 'setChatModel', value: string }\n- openChatSystemPrompt { type: 'openChatSystemPrompt' }\n- setChatMinimized { type: 'setChatMinimized', value: boolean }\n\nValid field names (must use exactly): ${ACTION_VALID_FIELDS.join(', ')}\n\nRules:\n- Output MUST be a valid JSON array. No markdown, no prose. No code fences.\n- Prefer bulkSetValues for multiple field updates.\n- Use only valid field names; do not invent new keys.\n- Do not include any wrapper besides the array.`;
 
         const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
           method: 'POST',
@@ -1330,19 +1502,34 @@ export default function WizardPage() {
           }),
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        const content: string = data?.message?.content ?? '';
+        if (!response.ok) {
+          const errorBody = await response.text().catch(() => '');
+          const details = errorBody ? ` - ${errorBody}` : '';
+          throw new Error(`HTTP ${response.status}${details}`);
+        }
+        const data = await response.json().catch(() => null);
+        let content: string = data?.message?.content ?? '';
         if (!content) throw new Error('Empty response');
+        setActionPreviewRaw(content);
 
-        await actionExecutor.executeFromJson(content, { skipErrors: true });
-        showToast('✅ Applied via actions');
+        const jsonPayload = extractJsonPayload(content);
+        if (!jsonPayload) throw new Error('Could not parse JSON actions');
+
+        // Parse for preview list
+        const { actions, errors } = parseActions(jsonPayload);
+        const normalized = normalizeActions(actions);
+        setActionPreviewJson(JSON.stringify(normalized, null, 2));
+        setActionPreviewActions(normalized);
+        setActionPreviewDescriptions(normalized.map(getActionDescription));
+        setActionPreviewErrors(errors);
+        setActionPreviewOpen(true);
+        showToast(errors.length ? '⚠️ Review actions (some issues)' : 'Ready to apply actions');
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         showToast(`❌ Apply failed: ${msg}`);
       }
     },
-    [ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaSettings.model, chatModel, actionExecutor, showToast]
+    [extractJsonPayload, normalizeActions, ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaSettings.model, chatModel, showToast]
   );
 
   const selects = useMemo(() => optionSets[mode] || {}, [optionSets, mode]);
@@ -1388,6 +1575,106 @@ export default function WizardPage() {
   }, [mode]);
 
   const summary = useMemo(() => ({ ...current, mode }), [current, mode]);
+
+  // Calculate completed steps based on filled fields
+  const completedSteps = useMemo(() => {
+    const completed = new Set<number>();
+    const currentValues = values[mode] || {};
+    
+    for (let stepNum = 1; stepNum <= STEPS.length; stepNum++) {
+      const fields = STEP_FIELDS[stepNum] || [];
+      if (fields.length === 0) {
+        // Step 22 (Review) is always considered complete if we have any values
+        if (Object.keys(currentValues).length > 0) {
+          completed.add(stepNum);
+        }
+        continue;
+      }
+      
+      // Check if at least one field in this step has a value
+      const hasValue = fields.some(field => {
+        const value = currentValues[field];
+        return value && value.trim().length > 0;
+      });
+      
+      if (hasValue) {
+        completed.add(stepNum);
+      }
+    }
+    
+    return completed;
+  }, [values, mode]);
+
+  // Track unsaved changes - compare current values with saved project
+  useEffect(() => {
+    if (!currentProjectId) {
+      // No project loaded, consider unsaved if we have any values
+      const hasAnyValues = Object.keys(values[mode] || {}).some(field => {
+        const val = values[mode]?.[field];
+        return val && val.trim().length > 0;
+      });
+      setHasUnsavedChanges(hasAnyValues);
+      return;
+    }
+
+    // Compare with saved project
+    const savedProject = projects.find(p => p.id === currentProjectId);
+    if (!savedProject) {
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    // Check if current state differs from saved
+    const hasChanges = mode !== savedProject.mode ||
+                       nsfwEnabled !== savedProject.nsfwEnabled ||
+                       JSON.stringify(values) !== JSON.stringify(savedProject.values);
+    
+    setHasUnsavedChanges(hasChanges);
+  }, [values, mode, nsfwEnabled, currentProjectId, projects]);
+
+  // Update undo/redo availability flags
+  useEffect(() => {
+    setCanUndo(historyIndex > 0);
+    setCanRedo(historyIndex < historyStack.length - 1);
+  }, [historyIndex, historyStack]);
+
+  // Add to history when values change (but not during undo/redo)
+  useEffect(() => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+
+    // Skip adding to history during initial hydration
+    if (!didHydrateRef.current) return;
+
+    const snapshot = {
+      values: JSON.parse(JSON.stringify(values)),
+      mode,
+      step,
+      timestamp: Date.now(),
+    };
+
+    setHistoryStack(prev => {
+      // Remove any redo history when making a new change
+      const newStack = prev.slice(0, historyIndex + 1);
+      newStack.push(snapshot);
+      
+      // Limit history to 50 entries
+      if (newStack.length > 50) {
+        newStack.shift();
+        return newStack;
+      }
+      
+      return newStack;
+    });
+
+    setHistoryIndex(prev => {
+      // Calculate the new index based on the current history length
+      return prev + 1;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, mode, step]);
 
   useEffect(() => {
     // Ensure the mode bucket exists, but do not auto-fill defaults.
@@ -1444,24 +1731,38 @@ export default function WizardPage() {
   };
 
   const renderLabel = useCallback(
-    (text: string, tooltip?: string, keySeed?: string) => (
-      <span className="field-label">
-        {text}
-        {keySeed && MULTI_SELECT_FIELDS.has(keySeed) ? (
-          <span className="field-multi" aria-label="Multi-select field">
-            Multi-select
-          </span>
-        ) : null}
-        {tooltip ? (
-          <span className="field-tip" tabIndex={0} aria-label={tooltip}>
-            ?
-            <span role="tooltip" className="field-tip-bubble">
-              {tooltip}
+    (text: string, tooltip?: string, keySeed?: string) => {
+      // Get enhanced tooltip data if available
+      const enhancedTooltip = keySeed ? getFieldTooltip(keySeed) : null;
+      const tooltipContent = enhancedTooltip
+        ? (
+            <div className="field-tooltip-enhanced">
+              <div className="field-tooltip-description">{enhancedTooltip.description}</div>
+              <div className="field-tooltip-example">
+                <strong>Example:</strong> {enhancedTooltip.example}
+              </div>
+            </div>
+          )
+        : tooltip;
+
+      return (
+        <span className="field-label">
+          {text}
+          {keySeed && MULTI_SELECT_FIELDS.has(keySeed) ? (
+            <span className="field-multi" aria-label="Multi-select field">
+              Multi-select
             </span>
-          </span>
-        ) : null}
-      </span>
-    ),
+          ) : null}
+          {(tooltip || enhancedTooltip) ? (
+            <Tooltip content={tooltipContent || tooltip || ''} position="top">
+              <span className="field-tip-icon" tabIndex={0} aria-label="Field help">
+                ?
+              </span>
+            </Tooltip>
+          ) : null}
+        </span>
+      );
+    },
     []
   );
 
@@ -1582,15 +1883,62 @@ export default function WizardPage() {
       } else if (e.key === 'ArrowLeft' && !isInput) {
         e.preventDefault();
         handleBack();
-      } else if (ctrl && e.key.toLowerCase() === 'r') {
+      } else if (ctrl && e.key.toLowerCase() === 'r' && !isInput) {
         e.preventDefault();
         if (e.shiftKey) randomizeAll(); else randomizeStep();
+      } else if (ctrl && e.key === '?' && !isInput) {
+        e.preventDefault();
+        setShortcutsModalOpen(true);
+      } else if (ctrl && e.key.toLowerCase() === 'z' && !isInput) {
+        e.preventDefault();
+        performUndo();
+      } else if (ctrl && e.key.toLowerCase() === 'y' && !isInput) {
+        e.preventDefault();
+        performRedo();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, mode]);
+
+  const performUndo = () => {
+    if (historyIndex <= 0) {
+      showToast('Nothing to undo');
+      return;
+    }
+
+    const prevIndex = historyIndex - 1;
+    const snapshot = historyStack[prevIndex];
+    
+    if (!snapshot) return;
+
+    isUndoRedoRef.current = true;
+    setValues(snapshot.values);
+    setMode(snapshot.mode);
+    setStep(snapshot.step);
+    setHistoryIndex(prevIndex);
+    showToast('Undo');
+  };
+
+  const performRedo = () => {
+    if (historyIndex >= historyStack.length - 1) {
+      showToast('Nothing to redo');
+      return;
+    }
+
+    const nextIndex = historyIndex + 1;
+    const snapshot = historyStack[nextIndex];
+    
+    if (!snapshot) return;
+
+    isUndoRedoRef.current = true;
+    setValues(snapshot.values);
+    setMode(snapshot.mode);
+    setStep(snapshot.step);
+    setHistoryIndex(nextIndex);
+    showToast('Redo');
+  };
 
   const randomPick = (list: string[]) => {
     const clean = (list || []).filter(Boolean);
@@ -1966,6 +2314,10 @@ export default function WizardPage() {
 
     const userMessage = chatInput.trim();
     const modelToUse = chatModel || ollamaSettings.model;
+    if (!modelToUse) {
+      showToast('⚠️ Select an Ollama model first');
+      return;
+    }
     
     // Update chat messages before sending
     const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage }];
@@ -2005,7 +2357,9 @@ export default function WizardPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorBody = await response.text().catch(() => '');
+        const details = errorBody ? ` - ${errorBody}` : '';
+        throw new Error(`HTTP error! status: ${response.status}${details}`);
       }
 
       const reader = response.body?.getReader();
@@ -2422,6 +2776,12 @@ export default function WizardPage() {
         modes={MODES}
         stepTitle={stepTitle}
         onShowToast={showToast}
+        completedSteps={completedSteps}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onUndo={performUndo}
+        onRedo={performRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
       <div className="topbar-spacer" aria-hidden="true" />
 
@@ -2859,6 +3219,14 @@ export default function WizardPage() {
               docked
               onToggleDock={() => setChatDocked(false)}
               onApplyPrompt={applyPromptViaActions}
+              actionPreviewOpen={actionPreviewOpen}
+              actionPreviewRaw={actionPreviewRaw}
+              actionPreviewJson={actionPreviewJson}
+              actionPreviewDescriptions={actionPreviewDescriptions}
+              actionPreviewErrors={actionPreviewErrors}
+              onApplyActionsPreview={handleApplyActionsPreview}
+              onCopyActionsJson={handleCopyActionsJson}
+              onCloseActionsPreview={() => setActionPreviewOpen(false)}
               chatOpen={true}
               setChatOpen={setChatOpen}
               chatMessages={chatMessages}
@@ -3985,6 +4353,43 @@ export default function WizardPage() {
               </button>
             </div>
             <textarea value={prompt} readOnly rows={6} aria-label="Generated prompt" />
+            <div className="settings-divider" />
+            <div className="output-head">
+              <div>
+                <p className="eyebrow">Apply Actions JSON</p>
+                <h3>Paste to apply</h3>
+              </div>
+            </div>
+            <textarea
+              value={actionPasteJson}
+              onChange={(e) => setActionPasteJson(e.target.value)}
+              onPaste={(e) => {
+                const text = e.clipboardData.getData('text');
+                if (text) {
+                  setActionPasteJson(text);
+                  setTimeout(() => applyPastedActionsJson(text), 0);
+                }
+              }}
+              rows={6}
+              placeholder="Paste JSON actions here to apply immediately"
+              aria-label="Paste actions JSON"
+            />
+            <div className="settings-actions">
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => setActionPasteJson('')}
+              >
+                Clear
+              </button>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => applyPastedActionsJson(actionPasteJson)}
+              >
+                Apply JSON
+              </button>
+            </div>
           </div>
         </article>
       </section>
@@ -4018,6 +4423,12 @@ export default function WizardPage() {
 
       {/* Toast Notification */}
       <Toast message={toast} />
+
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        isOpen={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
 
       <div className="sticky-nav-spacer" aria-hidden="true" />
       <footer className="sticky-nav" role="navigation" aria-label="Wizard navigation">
@@ -4070,6 +4481,14 @@ export default function WizardPage() {
         <ChatPanel
           onToggleDock={() => setChatDocked(true)}
           onApplyPrompt={applyPromptViaActions}
+          actionPreviewOpen={actionPreviewOpen}
+          actionPreviewRaw={actionPreviewRaw}
+          actionPreviewJson={actionPreviewJson}
+          actionPreviewDescriptions={actionPreviewDescriptions}
+          actionPreviewErrors={actionPreviewErrors}
+          onApplyActionsPreview={handleApplyActionsPreview}
+          onCopyActionsJson={handleCopyActionsJson}
+          onCloseActionsPreview={() => setActionPreviewOpen(false)}
           chatOpen={chatOpen}
           setChatOpen={setChatOpen}
           chatMessages={chatMessages}
@@ -4854,64 +5273,99 @@ function buildClassicParagraph(
   const contextBits = [] as string[];
   if (data.scene_description) contextBits.push(lowercaseFirst(data.scene_description));
   if (data.main_subject) contextBits.push(`focusing on ${lowercaseFirst(data.main_subject)}`);
-  if (data.story_elements) contextBits.push(`with story elements of ${lowercaseFirst(data.story_elements)}`);
-  const contextText = contextBits.length ? `${contextBits.join(', ')}.` : '';
+  if (data.story_elements) contextBits.push(`with ${lowercaseFirst(data.story_elements)}`);
+  const contextText = contextBits.length ? `${contextBits.join(', ')}. ` : '';
 
   const bits = [] as string[];
-  bits.push(`A ${withCaptureWord(data.shot, captureWord)}`);
-  bits.push(`capturing a ${lowercaseFirst(data.genre)} aesthetic`);
-  if (data.subject) bits.push(`that features ${lowercaseFirst(data.subject)}`);
-  if (!isMinimal && data.wardrobe) bits.push(`attired in ${lowercaseFirst(data.wardrobe)}`);
-  bits.push(`set within ${envText}`);
-  bits.push(`at ${data.time}`);
-  bits.push(`under ${lowercaseFirst(data.lighting)} illumination${intensityText}`);
-  if (!isMinimal && data.atmosphere && data.atmosphere !== 'clear air') bits.push(`amid ${lowercaseFirst(data.atmosphere)}`);
-  bits.push(`with the camera ${lowercaseFirst(data.camera)}`);
-  if (!isMinimal && data.framing_notes) bits.push(`utilizing ${lowercaseFirst(data.framing_notes)} framing`);
-  if (!isMinimal && data.palette) bits.push(`rendered in ${lowercaseFirst(data.palette)}`);
-  if (data.action) bits.push(`as the action unfolds: ${data.action}`);
-  if (data.focus_target) bits.push(`with attention drawn to ${lowercaseFirst(data.focus_target)}`);
-  if (data.audio) bits.push(`accompanied by ${lowercaseFirst(naturalizeMulti(data.audio))} in the ambient environment`);
-  if (!isMinimal && data.sfx) bits.push(`layered with ${lowercaseFirst(naturalizeMulti(data.sfx))}`);
-  if (data.music) bits.push(`underscored by ${lowercaseFirst(data.music)}`);
-  if (data.mix_notes) bits.push(`balanced with ${lowercaseFirst(data.mix_notes)}`);
-  if (data.dialogue) bits.push(`and dialogue that reads: "${data.dialogue}"`);
-  if (!isMinimal && data.avoid) bits.push(`while avoiding ${lowercaseFirst(data.avoid)}`);
+  
+  // Opening: shot + genre
+  bits.push(`${withCaptureWord(data.shot, captureWord)}, ${lowercaseFirst(data.genre)}`);
+  
+  // Subject + wardrobe
+  if (data.subject) {
+    const subjectText = !isMinimal && data.wardrobe 
+      ? `${lowercaseFirst(data.subject)}, ${lowercaseFirst(data.wardrobe)}`
+      : lowercaseFirst(data.subject);
+    bits.push(subjectText);
+  }
+  
+  // Environment + lighting
+  const envLightBits = [envText];
+  envLightBits.push(`${lowercaseFirst(data.lighting)}${intensityText}`);
+  if (!isMinimal && data.atmosphere && data.atmosphere !== 'clear air') {
+    envLightBits.push(lowercaseFirst(data.atmosphere));
+  }
+  bits.push(envLightBits.join(', '));
+  
+  // Camera + framing
+  if (data.camera) {
+    const camText = !isMinimal && data.framing_notes
+      ? `${lowercaseFirst(data.camera)}, ${lowercaseFirst(data.framing_notes)}`
+      : lowercaseFirst(data.camera);
+    bits.push(camText);
+  }
+  
+  // Color + focus
+  const visualBits = [];
+  if (!isMinimal && data.palette) visualBits.push(lowercaseFirst(data.palette));
+  if (data.focus_target) visualBits.push(`focus on ${lowercaseFirst(data.focus_target)}`);
+  if (visualBits.length) bits.push(visualBits.join(', '));
+  
+  // Action
+  if (data.action) bits.push(data.action);
+  
+  // Audio stack
+  const audioBits = [];
+  if (data.audio) audioBits.push(lowercaseFirst(naturalizeMulti(data.audio)));
+  if (!isMinimal && data.sfx) audioBits.push(lowercaseFirst(naturalizeMulti(data.sfx)));
+  if (data.music) audioBits.push(lowercaseFirst(data.music));
+  if (data.mix_notes) audioBits.push(lowercaseFirst(data.mix_notes));
+  if (audioBits.length) bits.push(audioBits.join(', '));
+  
+  // Dialogue
+  if (data.dialogue) bits.push(`"${data.dialogue}"`);
+  
+  // Avoid
+  if (!isMinimal && data.avoid) bits.push(`avoiding ${lowercaseFirst(data.avoid)}`);
   
   const enhancementBits = [] as string[];
-  if (data.advanced_technical) enhancementBits.push(`technical approach: ${lowercaseFirst(data.advanced_technical)}`);
-  if (data.cinematic_notes) enhancementBits.push(`cinematic notes: ${lowercaseFirst(data.cinematic_notes)}`);
-  if (data.references) enhancementBits.push(`referencing ${lowercaseFirst(data.references)}`);
-  if (data.inspiration_style) enhancementBits.push(`inspired by ${lowercaseFirst(data.inspiration_style)}`);
-  const enhancementText = enhancementBits.length ? ` Additional production details include ${enhancementBits.join('; ')}.` : '';
+  if (data.advanced_technical) enhancementBits.push(lowercaseFirst(data.advanced_technical));
+  if (data.cinematic_notes) enhancementBits.push(lowercaseFirst(data.cinematic_notes));
+  if (data.references) enhancementBits.push(`ref: ${lowercaseFirst(data.references)}`);
+  if (data.inspiration_style) enhancementBits.push(lowercaseFirst(data.inspiration_style));
 
   const temporalBits = [] as string[];
   if (data.time_of_day) temporalBits.push(lowercaseFirst(data.time_of_day));
-  if (data.season) temporalBits.push(`during ${lowercaseFirst(data.season)}`);
-  if (data.era) temporalBits.push(`set in ${lowercaseFirst(data.era)}`);
-  if (data.cultural_context) temporalBits.push(`with ${lowercaseFirst(data.cultural_context)} context`);
-  const temporalText = temporalBits.length ? ` The temporal setting is ${temporalBits.join(', ')}.` : '';
+  if (data.season) temporalBits.push(lowercaseFirst(data.season));
+  if (data.era) temporalBits.push(lowercaseFirst(data.era));
+  if (data.cultural_context) temporalBits.push(lowercaseFirst(data.cultural_context));
 
   const effectsBits = [] as string[];
-  if (data.special_effects) effectsBits.push(`special effects: ${lowercaseFirst(data.special_effects)}`);
-  if (data.practical_elements) effectsBits.push(`practical elements: ${lowercaseFirst(data.practical_elements)}`);
-  if (data.vfx_notes) effectsBits.push(`VFX notes: ${lowercaseFirst(data.vfx_notes)}`);
-  const effectsText = effectsBits.length ? ` Effects work includes ${effectsBits.join('; ')}.` : '';
+  if (data.special_effects) effectsBits.push(lowercaseFirst(data.special_effects));
+  if (data.practical_elements) effectsBits.push(lowercaseFirst(data.practical_elements));
+  if (data.vfx_notes) effectsBits.push(lowercaseFirst(data.vfx_notes));
 
   const narrativeBits = [] as string[];
-  if (data.character_development) narrativeBits.push(`character development: ${lowercaseFirst(data.character_development)}`);
-  if (data.emotional_arc) narrativeBits.push(`emotional arc: ${lowercaseFirst(data.emotional_arc)}`);
-  if (data.subtext) narrativeBits.push(`subtext: ${lowercaseFirst(data.subtext)}`);
-  if (data.pacing) narrativeBits.push(`pacing: ${lowercaseFirst(data.pacing)}`);
-  const narrativeText = narrativeBits.length ? ` The narrative layer emphasizes ${narrativeBits.join('; ')}.` : '';
+  if (data.character_development) narrativeBits.push(lowercaseFirst(data.character_development));
+  if (data.emotional_arc) narrativeBits.push(lowercaseFirst(data.emotional_arc));
+  if (data.subtext) narrativeBits.push(lowercaseFirst(data.subtext));
+  if (data.pacing) narrativeBits.push(lowercaseFirst(data.pacing));
 
   const finishingBits = [] as string[];
   if (data.final_touches) finishingBits.push(lowercaseFirst(data.final_touches));
   if (data.custom_details) finishingBits.push(lowercaseFirst(data.custom_details));
-  const finishingText = finishingBits.length ? ` Final polish: ${finishingBits.join(', ')}.` : '';
 
-  const core = bits.join(', ').replace(/,\s+/g, ', ').trim() + '.';
-  return [contextText, core, temporalText, enhancementText, effectsText, narrativeText, finishingText].filter(Boolean).join(' ');
+  // Assemble final sections
+  const sections = [];
+  if (contextText) sections.push(contextText.replace(/\.$/, ''));
+  sections.push(bits.join(', '));
+  if (temporalBits.length) sections.push(temporalBits.join(', '));
+  if (enhancementBits.length) sections.push(enhancementBits.join(', '));
+  if (effectsBits.length) sections.push(effectsBits.join(', '));
+  if (narrativeBits.length) sections.push(narrativeBits.join(', '));
+  if (finishingBits.length) sections.push(finishingBits.join(', '));
+
+  return sections.join('. ') + '.';
 }
 
 function buildPrompt(

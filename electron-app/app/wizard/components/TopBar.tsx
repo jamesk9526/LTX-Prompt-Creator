@@ -54,6 +54,12 @@ interface TopBarProps {
   modes: Array<{ id: ModeId; title: string }>;
   stepTitle: (step: number) => string;
   onShowToast: (message: string) => void;
+  completedSteps?: Set<number>;
+  hasUnsavedChanges?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
 }
 
 export default function TopBar({
@@ -85,12 +91,26 @@ export default function TopBar({
   modes,
   stepTitle,
   onShowToast,
+  completedSteps = new Set(),
+  hasUnsavedChanges = false,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
 }: TopBarProps) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
         <div className="brand">
-          <div className="brand-title">LTXV Prompt Creator</div>
+          <div className="brand-title">
+            LTXV Prompt Creator
+            {hasUnsavedChanges && (
+              <span className="unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes">●</span>
+            )}
+          </div>
+          <div className="completion-indicator">
+            {completedSteps.size} / {steps.length} steps complete
+          </div>
         </div>
         <div className="topbar-actions">
           <div className="topbar-group">
@@ -103,7 +123,7 @@ export default function TopBar({
               >
                 {steps.map((n) => (
                   <option key={n} value={String(n)}>
-                    Step {n} — {stepTitle(n)}
+                    {completedSteps.has(n) ? '✓ ' : '○ '}Step {n} — {stepTitle(n)}
                   </option>
                 ))}
               </select>
@@ -185,11 +205,31 @@ export default function TopBar({
             <button
               className="icon-btn"
               type="button"
+              title="Undo (Ctrl+Z)"
+              onClick={onUndo}
+              disabled={!canUndo}
+              aria-label="Undo last action"
+            >
+              ↶
+            </button>
+            <button
+              className="icon-btn"
+              type="button"
+              title="Redo (Ctrl+Y)"
+              onClick={onRedo}
+              disabled={!canRedo}
+              aria-label="Redo action"
+            >
+              ↷
+            </button>
+            <button
+              className="icon-btn"
+              type="button"
               title="Reset this step"
               onClick={onResetStep}
               aria-label="Reset current step to default"
             >
-              ↶
+              ⟲
             </button>
             <button
               className="icon-btn"
