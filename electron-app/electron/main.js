@@ -6,6 +6,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const isMac = process.platform === 'darwin';
 
 let mainWindow;
+let chatWindow;
 let serverPort = 3000;
 
 // Start static server in production
@@ -58,6 +59,41 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+function createChatWindow() {
+  const appIcon = process.platform === 'win32'
+    ? path.join(__dirname, '../assets/icon.ico')
+    : path.join(__dirname, '../assets/icon.png');
+
+  chatWindow = new BrowserWindow({
+    width: 800,
+    height: 700,
+    minWidth: 600,
+    minHeight: 400,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+    icon: appIcon,
+    show: false,
+  });
+
+  const startUrl = isDev
+    ? 'http://localhost:3000/chat'
+    : `http://127.0.0.1:${serverPort}/chat`;
+
+  chatWindow.loadURL(startUrl);
+
+  // Show window when ready
+  chatWindow.once('ready-to-show', () => {
+    chatWindow.show();
+  });
+
+  chatWindow.on('closed', () => {
+    chatWindow = null;
   });
 }
 
@@ -163,6 +199,15 @@ ipcMain.on('get-window-state', (event) => {
     event.reply('window-state', {
       isMaximized: mainWindow.isMaximized(),
     });
+  }
+});
+
+// Chat window IPC handler
+ipcMain.on('open-chat-window', () => {
+  if (chatWindow) {
+    chatWindow.focus();
+  } else {
+    createChatWindow();
   }
 });
 

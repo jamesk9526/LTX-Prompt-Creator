@@ -33,7 +33,7 @@
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
-  filter: drop-shadow(0 0 10px rgba(255, 122, 24, 0.18));
+  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.18));
 }
 
 .controls {
@@ -59,19 +59,19 @@
 }
 
 .button:hover {
-  background: rgba(255, 122, 24, 0.12);
+  background: rgba(139, 92, 246, 0.14);
   color: var(--text);
 }
 
 .button:active {
-  background: rgba(255, 122, 24, 0.18);
+  background: rgba(124, 58, 237, 0.18);
 }
 
 .closeButton:hover {
-  background: rgba(255, 77, 46, 0.12);
-  color: var(--accent-strong);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--accent);
 }
 
 .closeButton:active {
-  background: rgba(255, 77, 46, 0.2);
+  background: rgba(239, 68, 68, 0.2);
 }

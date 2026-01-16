@@ -1,13 +1,32 @@
 :root {
-  --bg: #0b0c10;
-  --panel: rgba(18, 19, 23, 0.86);
-  --panel-strong: rgba(14, 15, 18, 0.9);
-  --text: #e9e6df;
-  --muted: rgba(233, 230, 223, 0.62);
-  --accent: #ff7a18;
-  --accent-strong: #ff4d2e;
-  --border: rgba(255, 140, 64, 0.22);
-  --border-strong: rgba(255, 140, 64, 0.34);
+  /* Core dark theme: black + purple */
+  --bg: #0a0a0f;                         /* deeper near-black */
+  --panel: rgba(13, 13, 22, 0.86);
+  --panel-strong: rgba(10, 10, 18, 0.92);
+
+  /* Text scale (add --fg alias for component CSS) */
+  --text: #e8e6f0;
+  --fg: var(--text);
+  --muted: rgba(232, 230, 240, 0.62);
+
+  /* Purple accent palette */
+  --accent: #8b5cf6;                     /* violet-500 */
+  --accent-strong: #7c3aed;              /* violet-600 */
+  --border: rgba(139, 92, 246, 0.26);    /* subtle violet border */
+  --border-strong: rgba(124, 58, 237, 0.38);
+
+  /* Inputs and surfaces */
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-bg-hover: rgba(255, 255, 255, 0.06);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 * {
   box-sizing: border-box;
@@ -28,34 +47,32 @@ a {
   text-decoration: none;
 }
 
-main {
-  padding: 24px;
+main { padding: var(--space-5); }
+
+@media (max-width: 640px) {
+  main { padding: var(--space-4); }
 }
 
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 
-.row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+.row { display: flex; gap: var(--space-4); flex-wrap: wrap; }
 
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background: rgba(20, 21, 24, 0.9);
+  background: var(--input-bg);
   color: var(--text);
   font-weight: 600;
   cursor: pointer;
@@ -64,15 +81,20 @@ main {
 
 .button:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 122, 24, 0.7);
-  box-shadow: 0 16px 50px rgba(255, 122, 24, 0.14);
+  border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 16px 50px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .button.primary {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
-  color: #0b0c10;
+  color: #ffffff;
   border: none;
 }
+
+.button:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.button.ghost { background: transparent; border-color: var(--border); }
+.button.ghost:hover { background: var(--input-bg-hover); }
 
 /* Welcome */
 .welcome-shell {
@@ -85,8 +107,8 @@ main {
 
 .welcome-card {
   width: min(920px, calc(100% - 24px));
-  padding: 26px;
-  border-radius: 18px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--panel);
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.3);
@@ -119,8 +141,8 @@ main {
   border-radius: 16px;
   padding: 14px 16px;
   border: 1px solid var(--border);
-  background: radial-gradient(800px 260px at 16% 16%, rgba(255, 122, 24, 0.12), transparent 55%),
-    radial-gradient(700px 260px at 84% 22%, rgba(255, 77, 46, 0.10), transparent 58%),
+  background: radial-gradient(800px 260px at 16% 16%, rgba(139, 92, 246, 0.14), transparent 55%),
+    radial-gradient(700px 260px at 84% 22%, rgba(124, 58, 237, 0.10), transparent 58%),
     var(--panel);
 }
 

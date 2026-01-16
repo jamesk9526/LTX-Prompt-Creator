@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './wizard.css';
+import ChatPanel from '../components/ChatPanel';
+import Toast from '../components/Toast';
+import ProjectsModal from '../components/modals/ProjectsModal';
+import TopBar from './components/TopBar';
+import OllamaSidePanel from './modals/OllamaSidePanel';
+import SettingsModal from './modals/SettingsModal';
+import PreviewSidebar from './components/PreviewSidebar';
 
 type OptionSets = Record<string, Record<string, string[]>>;
 
@@ -65,35 +72,106 @@ Strengths:
 - High-quality character performances with subtle emotions
 - Audio-visual synchronization
 - Long-form coherent video generation
+- World-building and environment creation
+- Emotional nuance and character development
+- Technical precision with creative flair
 
 Best practices for LTX prompts:
+- Start with a clear creative brief: scene concept, main subject, key story elements, and inspiration
 - Be specific with camera angles and movements (wide shot, push-in, crane rise, etc.)
 - Describe lighting with technical accuracy (volumetric shafts, rim light, practical lamps)
 - Include integrated audio/sound design descriptions chronologically with visuals
 - Use present-progressive verbs for continuous action ("is walking" not "walks")
-- Specify character details: hair, clothing, expressions, posture
+- Specify character details: hair, clothing, expressions, posture, emotional arc
 - Describe environmental interactions and object relationships clearly
 - Include temporal connectors: as, then, while, before, after
 - For movement: be explicit about pace, manner, direction (smoothly, deliberately, quickly)
 - Avoid vague terms; replace "colorful" with specific colors, "bright" with "soft" or "harsh"
+- Reference inspirations and visual styles (film, photographer, art movement)
+- Consider time of day, season, era, and cultural context for authenticity
+- Layer in character development, emotional arcs, and subtext
+- Think about pacing and rhythm to guide viewer attention
+- Technical details (frame rate, DOF, format) inform overall quality
 - Keep prompts structured but written as natural continuous narrative
 
-Common LTX prompt structure:
-1. Style and visual treatment
-2. Scene setup and environment
-3. Character description and positioning
-4. Primary action and movement
-5. Camera work and framing
-6. Lighting design
-7. Audio elements (background, effects, speech if present)`;
+Workflow phases for rich descriptions:
+1. Creative Brief: Establish your core concept and emotional intent
+2. Visual Treatment: Genre, shot type, framing, and composition
+3. Character/Subject: Role, appearance, wardrobe, pose, mood
+4. Environment: Location, lighting, weather, textures, atmosphere
+5. Action: Movement, dynamics, pacing, timing
+6. Technical: Camera work, lens choice, color grading, effects
+7. Audio: Soundscape, dialogue, music, audio effects
+8. Polish: Character arcs, references, timing refinement, final touches
 
-type CaptureWord = 'shot' | 'video' | 'clip' | 'frame';
+Creative Brief as foundation:
+- Scene description: What is happening in this moment?
+- Main subject: What/who is the focus?
+- Story elements: What themes or emotions are present?
+- Inspiration: What references inform the visual style?
+
+All these elements combine to create coherent, compelling video prompts that showcase LTX's full creative potential.`;
+
+// PHOTOGRAPHY CONTEXT for Stable Diffusion and Flux Dev
+const PHOTOGRAPHY_CONTEXT = `PHOTOGRAPHY GENERATION INFORMATION:
+Photography mode creates detailed prompts for Stable Diffusion and Flux Dev focused on professional photography.
+
+Strengths:
+- Realistic photographic aesthetics and lighting
+- Technical camera settings (aperture, shutter speed, ISO, lens focal length)
+- Professional lighting setups (studio, natural, mixed)
+- Composition and framing techniques
+- Post-processing and color grading
+- Fine art and commercial photography styles
+- Portrait, product, landscape, and architectural photography
+- Macro and detail photography
+- Environmental and lifestyle photography
+
+Best practices for photography prompts:
+- Start with photographic genre and style (portrait, product, landscape, etc.)
+- Include specific camera settings: aperture (f/1.4, f/2.8, f/5.6, f/16), shutter speed (1/1000, 1/60, 1 sec)
+- Specify lighting setup: key light, fill light, rim light, practical lights
+- Describe composition using photography terms: rule of thirds, leading lines, golden ratio
+- Include lens choice and focal length (50mm prime, 85mm portrait, 24mm wide, etc.)
+- Specify color grading and post-processing style (Lightroom preset, VSCO, Adobe, RAW editing)
+- Use technical photography language: depth of field, bokeh, chromatic aberration, lens flare
+- Describe subject with detail: model appearance, wardrobe, accessories, expressions
+- Include environmental context: studio setup, outdoor location, weather conditions
+- Specify time of day and light quality: golden hour, blue hour, harsh midday, overcast soft
+- Reference photographic styles and photographers for inspiration
+- Use descriptive but realistic language - avoid video production terms
+- Consider weather and seasonal elements for authenticity
+- Detail texture and material qualities visible in the photograph
+- Specify mood and emotional tone through visual and compositional choices
+- Include technical quality indicators: sharp focus, clean exposure, dynamic range
+
+Workflow for photography prompts:
+1. Genre & Style: Define photography type and visual aesthetic
+2. Subject: Model, object, landscape, or architectural subject details
+3. Lighting: Key light setup, fill lights, rim lights, practical lights
+4. Composition: Framing, rule of thirds, depth, negative space
+5. Camera: Lens choice, aperture, shutter speed, ISO
+6. Environment: Location setting, weather, time of day
+7. Post-Processing: Color grading, presets, editing style
+8. Polish: Fine details, quality indicators, reference style
+
+Perfect for:
+- Portraits and headshots with professional lighting
+- Product photography with studio setups
+- Fashion and editorial photography
+- Landscape and architectural photography
+- Food and lifestyle photography
+- Fine art and conceptual photography
+- Commercial photography for marketing
+- Social media and portfolio photography`;
+
+type CaptureWord = 'shot' | 'video' | 'clip' | 'frame' | 'photo';
 
 type PromptFormat = 'ltx2' | 'paragraph';
 
 type DetailLevel = 'minimal' | 'balanced' | 'rich';
 
-type ModeId = 'cinematic' | 'classic' | 'drone' | 'animation' | 'nsfw';
+type ModeId = 'cinematic' | 'classic' | 'drone' | 'animation' | 'photography' | 'nsfw';
 
 type Tone = 'melancholic' | 'balanced' | 'energetic' | 'dramatic';
 
@@ -113,6 +191,7 @@ type UiPrefs = {
   autoFillAudio: boolean;
   autoFillCamera: boolean;
   previewFontScale: number;
+  hideNsfw: boolean;
 };
 
 type Project = {
@@ -143,90 +222,120 @@ const DEFAULT_OLLAMA_SETTINGS: OllamaSettings = {
   enabled: true,
   apiEndpoint: 'http://localhost:11434',
   model: 'llama2',
-  systemInstructions: `You are a Creative Assistant. Given a user's raw input prompt describing a scene or concept, expand it into a detailed video generation prompt with specific visuals and integrated audio to guide a text-to-video model.
+  systemInstructions: `You are an Expert Creative Prompt Engineer specializing in AI-generated content. Your task is to expand and refine raw user prompts into detailed, production-ready prompts optimized for text-to-image and text-to-video generation models (Stable Diffusion, Flux Dev, LTX, etc.).
 
-#### Guidelines
-- Strictly follow all aspects of the user's raw input: include every element requested (style, visuals, motions, actions, camera movement, audio).
-    - If the input is vague, invent concrete details: lighting, textures, materials, scene settings, etc.
-        - For characters: describe gender, clothing, hair, expressions. DO NOT invent unrequested characters.
-- Use active language: present-progressive verbs ("is walking," "speaking"). If no action specified, describe natural movements.
-- Maintain chronological flow: use temporal connectors ("as," "then," "while").
-- Audio layer: Describe complete soundscape (background audio, ambient sounds, SFX, speech/music when requested). Integrate sounds chronologically alongside actions. Be specific (e.g., "soft footsteps on tile"), not vague (e.g., "ambient sound is present").
-- Speech (only when requested): 
-    - For ANY speech-related input (talking, conversation, singing, etc.), ALWAYS include exact words in quotes with voice characteristics (e.g., "The man says in an excited voice: 'You won't believe what I just saw!'").
-    - Specify language if not English and accent if relevant.
-- Style: Include visual style at the beginning: "Style: <style>, <rest of prompt>." Default to cinematic-realistic if unspecified. Omit if unclear.
-- Visual and audio only: NO non-visual/auditory senses (smell, taste, touch).
-- Restrained language: Avoid dramatic/exaggerated terms. Use mild, natural phrasing.
-    - Colors: Use plain terms ("red dress"), not intensified ("vibrant blue," "bright red").
-    - Lighting: Use neutral descriptions ("soft overhead light"), not harsh ("blinding light").
-    - Facial features: Use delicate modifiers for subtle features (i.e., "subtle freckles").
+#### CORE PRINCIPLES
+- Preserve user intent: Never contradict or ignore what the user specifically requested
+- Add concrete specifics: Transform vague concepts into vivid, technical details
+- Use precise language: Technical accuracy matters for model performance
+- Match output format to purpose: Photography, video, animation each have different optimal prompt structures
 
-#### Important notes: 
-- Analyze the user's raw input carefully. In cases of FPV or POV, exclude the description of the subject whose POV is requested.
-- Camera motion: DO NOT invent camera motion unless requested by the user.
-- Speech: DO NOT modify user-provided character dialogue unless it's a typo.
-- No timestamps or cuts: DO NOT use timestamps or describe scene cuts unless explicitly requested.
-- Format: DO NOT use phrases like "The scene opens with...". Start directly with Style (optional) and chronological scene description.
-- Format: DO NOT start your response with special characters.
-- DO NOT invent dialogue unless the user mentions speech/talking/singing/conversation.
-- If the user's raw input prompt is highly detailed, chronological and in the requested format: DO NOT make major edits or introduce new elements. Add/enhance audio descriptions if missing.
+#### VIDEO PROMPT GUIDELINES (for LTX and similar models)
+- Strictly follow all aspects of the user's raw input: include every element requested (style, visuals, motions, actions, camera movement, audio)
+- If the input is vague, invent concrete details: lighting, textures, materials, scene settings
+- For characters: describe gender, clothing, hair, expressions. DO NOT invent unrequested characters
+- Use active language: present-progressive verbs ("is walking," "speaking"), not simple past
+- Maintain chronological flow: use temporal connectors ("as," "then," "while," "before," "after")
+- Audio layer: Describe complete soundscape (background, ambient, SFX, speech, music). Integrate chronologically
+- Speech: ALWAYS include exact words in quotes with voice characteristics ("The man says in an excited voice: 'You won't believe what I just saw!'")
+- Style: Include visual style at the beginning: "Style: <style description>. Rest of prompt..."
+- NO non-visual/auditory senses (smell, taste, touch perception)
+- Avoid dramatic/exaggerated terms: use mild, natural phrasing
+  - Colors: "red dress" not "vibrant red"
+  - Lighting: "soft overhead light" not "blinding light"
+  - Features: "subtle freckles" not "dramatic features"
+- NO invented camera motion unless requested
+- NO timestamps or scene cuts unless explicitly requested
+- Format: Start with Style (optional), then chronological narrative
+- Output: Single continuous paragraph, natural language, no Markdown
 
-#### Output Format (Strict):
-- Single continuous paragraph in natural language (English).
-- NO titles, headings, prefaces, code fences, or Markdown.
-- If unsafe/invalid, return original user prompt. Never ask questions or clarifications.
+#### PHOTOGRAPHY PROMPT GUIDELINES (for Stable Diffusion and Flux Dev)
+- Include photographic genre and style (portrait, product, landscape, macro, etc.)
+- Specify technical camera settings: aperture (f/1.4, f/2.8, f/8, f/16), shutter speed (1/1000, 1/60, 1sec), ISO
+- Detail lighting setup: key light, fill, rim light, type (studio softbox, natural window, golden hour, etc.)
+- Use composition techniques: rule of thirds, leading lines, golden ratio, layered depth, negative space
+- Include lens specifications: 50mm prime, 85mm portrait, 24mm wide, macro lens, etc.
+- Specify color grading style: Lightroom preset, VSCO film, RAW editing, cinematic look, etc.
+- Use photography technical terms: depth of field, bokeh, chromatic aberration, lens flare, vignette
+- Describe subject in detail: appearance, wardrobe, expression, pose, positioning
+- Environmental details: studio setup, outdoor location, weather, time of day (golden hour, blue hour, harsh midday)
+- Reference photographic style and photographers for inspiration
+- Use realistic, achievable language - avoid impossible physics
+- Include texture and material qualities visible in photo
+- Specify mood through composition and lighting choices
+- Quality indicators: "sharp focus," "clean exposure," "dynamic range preserved," "professional color grading"
+- Output: Natural descriptive paragraph with technical precision
 
-Your output quality is CRITICAL. Generate visually rich, dynamic prompts with integrated audio for high-quality video generation.
+#### GENERAL EXPANSION FRAMEWORK
+1. Establish core concept and mood
+2. Define primary subject and its characteristics in detail
+3. Add environmental context and spatial awareness
+4. Integrate technical specifications (camera, lighting, settings)
+5. Layer in sensory details and atmospheric elements
+6. Include style references and inspirations
+7. Polish for coherence and production-readiness
+8. Verify all user requests are honored
 
-#### Example
-Input: "A woman at a coffee shop talking on the phone"
-Output:
-Style: realistic with cinematic lighting. In a medium close-up, a woman in her early 30s with shoulder-length brown hair sits at a small wooden table by the window. She wears a cream-colored turtleneck sweater, holding a white ceramic coffee cup in one hand and a smartphone to her ear with the other. Ambient cafe sounds fill the space—espresso machine hiss, quiet conversations, gentle clinking of cups. The woman listens intently, nodding slightly, then takes a sip of her coffee and sets it down with a soft clink. Her face brightens into a warm smile as she speaks in a clear, friendly voice, 'That sounds perfect! I'd love to meet up this weekend. How about Saturday afternoon?' She laughs softly—a genuine chuckle—and shifts in her chair. Behind her, other patrons move subtly in and out of focus. 'Great, I'll see you then,' she concludes cheerfully, lowering the phone.`,
+#### OUTPUT FORMAT RULES
+- For video: Single continuous paragraph, no scene breaks unless requested
+- For photography: Descriptive technical paragraph suitable for generation models
+- ALWAYS output the refined prompt only (no preamble, explanation, or commentary)
+- Never ask clarifying questions or request additional information
+- If input seems unsafe/invalid, return a modified version that maintains intent while being safe
+
+#### CRITICAL SUCCESS FACTORS
+- Technical accuracy with poetic language
+- Logical coherence and chronological flow
+- Balanced detail: enough to be specific, not so much it becomes confusing
+- Model-appropriate terminology and structure
+- Preservation of original creative intent
+- Professional quality suitable for production use`,
   temperature: 0.7,
 };
 
 const DEFAULT_UI_PREFS: UiPrefs = {
   typingEnabled: false,
   typingSpeedMs: 2,
-  captureWord: 'clip',
+  captureWord: 'photo',
   autoCopyOnReview: false,
   promptFormat: 'paragraph',
   detailLevel: 'rich',
   autoFillAudio: true,
   autoFillCamera: true,
   previewFontScale: 1,
+  hideNsfw: true,
 };
 
 const MODES = [
-  { id: 'cinematic', title: 'Cinematic', tag: 'Camera-forward', desc: 'Film-inspired framing, motion, and grading.' },
-  { id: 'classic', title: 'Classic', tag: 'Balanced', desc: 'Cohesive, versatile looks for general prompts.' },
-  { id: 'drone', title: 'Drone / Landscape', tag: 'Non-person', desc: 'Aerials, landscapes, architecture, and environment-first footage.' },
-  { id: 'animation', title: 'Animation', tag: 'Stylized', desc: '2D/3D/stop-motion/anime-friendly wording and presets.' },
-  { id: 'nsfw', title: 'NSFW', tag: '18+', desc: 'Adult-focused styling. Requires NSFW enabled.' },
+  { id: 'cinematic' as ModeId, title: 'Cinematic', tag: 'Camera-forward', desc: 'Film-inspired framing, motion, and grading.' },
+  { id: 'classic' as ModeId, title: 'Classic', tag: 'Balanced', desc: 'Cohesive, versatile looks for general prompts.' },
+  { id: 'drone' as ModeId, title: 'Drone / Landscape', tag: 'Non-person', desc: 'Aerials, landscapes, architecture, and environment-first footage.' },
+  { id: 'animation' as ModeId, title: 'Animation', tag: 'Stylized', desc: '2D/3D/stop-motion/anime-friendly wording and presets.' },
+  { id: 'photography' as ModeId, title: 'Photography', tag: 'Still Image', desc: 'Professional photography for Stable Diffusion and Flux Dev.' },
+  { id: 'nsfw' as ModeId, title: 'NSFW', tag: '18+', desc: 'Adult-focused styling. Requires NSFW enabled.' },
 ];
 
 const DEFAULT_OPTION_SETS: OptionSets = {
   cinematic: {
-    genre: ['Sci-fi thriller', 'Period drama', 'Heist sequence', 'Space opera', 'Character study', 'Cyberpunk adventure', 'Historical epic', 'Post-apocalyptic tale', 'Superhero saga', 'Mystery intrigue', 'Fantasy quest', 'Crime drama', 'War story', 'Romance drama', 'Coming-of-age', 'Road movie', 'Political thriller', 'Bio-tech conspiracy', 'Mythic odyssey', 'Time-loop mystery', 'Noir detective', 'Spy espionage', 'Alien invasion', 'Dystopian future', 'Medieval fantasy', 'Western showdown', 'Horror suspense', 'Action blockbuster', 'Drama adaptation', 'Comedy caper'],
+    genre: ['Sci-fi thriller', 'Period drama', 'Heist sequence', 'Space opera', 'Character study', 'Cyberpunk adventure', 'Historical epic', 'Post-apocalyptic tale', 'Superhero saga', 'Mystery intrigue', 'Fantasy quest', 'Crime drama', 'War story', 'Romance drama', 'Coming-of-age', 'Road movie', 'Political thriller', 'Bio-tech conspiracy', 'Mythic odyssey', 'Time-loop mystery', 'Noir detective', 'Spy espionage', 'Alien invasion', 'Dystopian future', 'Medieval fantasy', 'Western showdown', 'Horror suspense', 'Action blockbuster', 'Drama adaptation', 'Comedy caper', 'Intimate dialogue scene', 'Documentary realism', 'Urban love story', 'Family moment', 'Workplace drama', 'Morning routine', 'Rainy day reflection', 'Coffee shop encounter', 'Train station goodbye', 'Airport reunion', 'Rooftop conversation', 'Empty hallway walk', 'Kitchen cooking dance', 'Window gazing', 'Sunset conversation', 'Night drive confessional', 'Park bench advice', 'Hospital waiting room', 'Moving boxes', 'First kiss', 'Last goodbye', 'Moment of realization', 'Quiet morning', 'Candlelit dinner', 'Phone call revelation', 'Letter reading', 'Photo album flip', 'Dream sequence', 'Memory flashback', 'Waking moment', 'Bathroom mirror moment', 'Getting dressed ritual', 'Making tea quietly', 'Writing in journal', 'Looking at old clothes', 'Finding a photo', 'Listening to music', 'Dancing alone', 'Crying silently', 'Laughing with a stranger', 'Holding hands', 'Walking away slowly'],
     shot: ['Wide establishing', 'Dynamic tracking', 'Close-up portrait', 'Over-the-shoulder', 'Hero shot', 'Dutch angle', 'Bird\'s eye view', 'Low angle', 'High angle', 'Panoramic sweep', 'Extreme close-up', 'Medium close-up', 'Two-shot', 'Point-of-view', 'Match cut setup', 'Insert detail', 'Rack focus reveal', 'Montage beat', 'Slow zoom in', 'Quick cutaway', 'Steadicam follow', 'Drone aerial', 'Handheld shaky', 'Locked focus', 'Depth reveal', 'Split screen', 'Time-lapse', 'Freeze frame', 'Reverse shot', 'Long take'],
     role: ['Protagonist', 'Investigator', 'Pilot', 'Engineer', 'Anti-hero', 'Mentor figure', 'Sidekick', 'Villain', 'Survivor', 'Rebel', 'Detective', 'Scientist', 'Soldier', 'Thief', 'Journalist', 'Leader', 'Wanderer', 'Hacker', 'Strategist', 'Visionary', 'Assassin', 'Diplomat', 'Explorer', 'Guardian', 'Outcast', 'Prophet', 'Warrior', 'Scholar', 'Inventor', 'Healer'],
     hairColor: ['black', 'dark brown', 'brown', 'auburn', 'red', 'strawberry blonde', 'blonde', 'platinum blonde', 'silver', 'white', 'gray', 'pastel pink', 'pastel blue', 'multicolored'],
     eyeColor: ['brown', 'hazel', 'green', 'blue', 'gray', 'amber', 'violet', 'heterochromia'],
     bodyDescriptor: ['tall', 'short', 'slender', 'athletic build', 'muscular build', 'curvy build', 'lean build', 'broad-shouldered', 'petite', 'plus-size'],
     mood: ['Tense', 'Hopeful', 'Melancholic', 'Triumphant', 'Mysterious', 'Energetic', 'Somber', 'Excited', 'Foreboding', 'Serene', 'Romantic', 'Bittersweet', 'Grim', 'Euphoric', 'Gritty', 'Dreamlike', 'Nostalgic', 'Introspective', 'Adventurous', 'Desperate', 'Optimistic', 'Cynical', 'Whimsical', 'Haunting', 'Empowering', 'Melodramatic'],
-    lighting: ['Volumetric shafts', 'Neon rim light', 'Golden hour', 'High contrast noir', 'Soft bounce', 'Harsh shadows', 'Warm tungsten', 'Cool moonlight', 'Strobe flashes', 'Subtle fill', 'Practical lamps', 'Silhouette backlight', 'Flicker firelight', 'Window slit light', 'Soft top light', 'Edge-lit', 'Candle flicker', 'Laser beams', 'UV blacklight', 'Floodlight harsh', 'Spotlight beam', 'Bounce from walls', 'Reflected pool', 'Sunset glow', 'Twilight blue', 'Storm lightning', 'Fireplace warm', 'Headlight glare'],
-    environment: ['Rainy street', 'Neon city', 'Abandoned warehouse', 'Orbiting station', 'Desert expanse', 'Dense forest', 'Urban skyline', 'Suburban home', 'Mountain peak', 'Ocean shore', 'Snowy pass', 'Cavern interior', 'Futuristic lab', 'Battlefield ruins', 'Underground tunnel', 'Rooftop at night', 'Stormy coast', 'Volcanic crater', 'Ice cave', 'Jungle canopy', 'Space colony', 'Medieval castle', 'Cyberpunk alley', 'Victorian mansion', 'Post-war wasteland', 'Crystal cavern', 'Floating platform', 'Submarine depths', 'Cloud city', 'Ancient temple'],
+    lighting: ['Volumetric shafts', 'Neon rim light', 'Golden hour', 'High contrast noir', 'Soft bounce', 'Harsh shadows', 'Warm tungsten', 'Cool moonlight', 'Strobe flashes', 'Subtle fill', 'Practical lamps', 'Silhouette backlight', 'Flicker firelight', 'Window slit light', 'Soft top light', 'Edge-lit', 'Candle flicker', 'Laser beams', 'UV blacklight', 'Floodlight harsh', 'Spotlight beam', 'Bounce from walls', 'Reflected pool', 'Sunset glow', 'Twilight blue', 'Storm lightning', 'Fireplace warm', 'Headlight glare', 'Ambient room light', 'Natural window diffuse', 'Lamp beside table', 'Phone screen glow', 'TV flicker', 'Neon sign spill', 'Street lamp orange', 'Fluorescent harsh', 'Candlelit soft', 'Dim table lamp', 'Bathroom mirror light', 'Kitchen overhead', 'Desk angle light', 'Side table glow', 'Far away street', 'Filtered through leaves', 'Bounced off ceiling', 'Reflected off mirror', 'Breaking through clouds', 'Early morning blue', 'Late day warm', 'Overcast even', 'Rainy day grey', 'Dusk purple', 'Blue hour twilight'],
+    environment: ['Rainy street', 'Neon city', 'Abandoned warehouse', 'Orbiting station', 'Desert expanse', 'Dense forest', 'Urban skyline', 'Suburban home', 'Mountain peak', 'Ocean shore', 'Snowy pass', 'Cavern interior', 'Futuristic lab', 'Battlefield ruins', 'Underground tunnel', 'Rooftop at night', 'Stormy coast', 'Volcanic crater', 'Ice cave', 'Jungle canopy', 'Space colony', 'Medieval castle', 'Cyberpunk alley', 'Victorian mansion', 'Post-war wasteland', 'Crystal cavern', 'Floating platform', 'Submarine depths', 'Cloud city', 'Ancient temple', 'Modest apartment', 'Tiny kitchen', 'Narrow hallway', 'Sparse bedroom', 'Empty cafe', 'Train compartment', 'Hotel lobby', 'Bus shelter', 'Park bench', 'Bus stop', 'Subway car', 'Parking garage', 'Stairwell', 'Hospital corridor', 'Office cubicle', 'Bookstore corner', 'Empty theater', 'Car interior', 'Backyard', 'Balcony', 'Bathroom mirror', 'Bedroom window', 'Attic space', 'Basement darkness', 'Laundromat', 'Gas station', 'Rest area', 'Motel room', 'Diner booth', 'Record store', 'Library quiet', 'Museum gallery', 'Train station', 'Airport gate'],
     wardrobe: ['Weathered leathers', 'Stealth techweave', 'Formal noir suit', 'Explorer layers', 'Armored rig', 'Casual jacket', 'Military uniform', 'Elegant gown', 'Rugged boots', 'High-tech visor', 'Streetwear', 'Tactical gear', 'Royal attire', 'Covert cloak', 'Minimal tech suit', 'Retro jumpsuit', 'Fur-lined coat', 'Chainmail armor', 'Silk robes', 'Battle-scarred cloak', 'Neon cyberwear', 'Desert robes', 'Pilot jumpsuit', 'Lab coat', 'Prison garb', 'Ceremonial robes', 'Steampunk gears', 'Space suit', 'Nomad wraps', 'Elite uniform'],
     pose: ['Striding forward', 'Holding ground', 'Leaning on rail', 'Kneeling for cover', 'Running mid-frame', 'Arms crossed', 'Pointing dramatically', 'Crouched low', 'Standing tall', 'Gesturing wildly', 'Mid-turn', 'Reaching out', 'Bracing impact', 'Over-shoulder glance', 'Hands clasped', 'Hands on console', 'Fist clenched', 'Arms raised', 'Head bowed', 'Eyes closed', 'Smiling slyly', 'Frowning intensely', 'Laughing aloud', 'Whispering secret', 'Saluting', 'Praying', 'Dancing', 'Fighting stance', 'Relaxed lean', 'Alert posture'],
     lightInteraction: ['wraps gently', 'cuts through haze', 'paints rim highlights', 'glitters on surfaces', 'bleeds into lens bloom', 'casts long shadows', 'diffuses softly', 'sparkles on metal', 'filters through leaves', 'reflects off water', 'scatters in dust', 'traces outlines', 'dances on skin', 'pierces darkness', 'softens edges', 'creates halos', 'illuminates details', 'casts silhouettes', 'warms tones', 'cools blues', 'adds depth', 'highlights textures', 'creates contrast', 'blurs boundaries', 'enhances mood', 'defines shapes'],
     weather: ['Clear dusk', 'Fine rain', 'Storm front', 'Snow flurry', 'Humid night', 'Foggy morning', 'Sunny afternoon', 'Overcast sky', 'Windy gale', 'Calm breeze', 'Heat haze', 'Blizzard whiteout', 'Smoggy night', 'Dust storm', 'Thunderstorm', 'Hail pellets', 'Rainbow arc', 'Aurora borealis', 'Sandstorm', 'Tornado funnel', 'Mild drizzle', 'Heavy downpour', 'Sleet mix', 'Frosty morning', 'Dewy grass', 'Humid fog', 'Clear starry night', 'Eclipse shadow'],
-    cameraMove: ['Slow push', 'Lateral dolly', 'Crane reveal', 'Handheld drift', 'Locked-off tableau', 'Quick zoom', 'Circular pan', 'Tilt up', 'Track backward', 'Static hold', 'Orbit reveal', 'Snap zoom', 'Whip pan', 'J-cut transition', 'Boom up', 'Pedestal down', 'Arc shot', 'Dutch tilt', 'Crash zoom', 'Reverse tracking', 'Spiral pan', 'Figure-eight', 'Pendulum swing', 'Elevator rise', 'Freefall drop', 'Time warp', 'Morph transition', 'Dissolve fade'],
+    cameraMove: ['Slow push', 'Lateral dolly', 'Crane reveal', 'Handheld drift', 'Locked-off tableau', 'Quick zoom', 'Circular pan', 'Tilt up', 'Track backward', 'Static hold', 'Orbit reveal', 'Snap zoom', 'Whip pan', 'J-cut transition', 'Boom up', 'Pedestal down', 'Arc shot', 'Dutch tilt', 'Crash zoom', 'Reverse tracking', 'Spiral pan', 'Figure-eight', 'Pendulum swing', 'Elevator rise', 'Freefall drop', 'Time warp', 'Morph transition', 'Dissolve fade', 'Slow drift closer', 'Gentle pan left', 'Gentle pan right', 'Focus pull reveal', 'Subtle tilt down', 'Handheld breath', 'Locked-off intimate', 'Slow push toward face', 'Reverse slow pull', 'Sideways glide', 'Around-subject orbit', 'Forward momentum', 'Backward retreat', 'Creeping forward', 'Floating follow', 'Walking pace track', 'Running speed chase', 'Elevator effect', 'Crane down reveal', 'Jib arm swing', 'Helicopter rise', 'Panning across', 'Tilting reveal', 'Rotating reveal'],
     lens: ['35mm spherical', '50mm prime', '85mm portrait', '24mm wide', 'Anamorphic 40mm', '100mm telephoto', '16mm ultra-wide', 'Macro lens', 'Fish-eye', 'Zoom lens', '28mm vintage', '135mm prime', '70-200 tele', 'Prime 14mm', '18-55 kit', '300mm sniper', '8mm fisheye', '50mm tilt-shift', '85mm soft focus', '24mm tilt', '100mm macro', '200mm tele', '10mm ultra-wide', '60mm macro', '400mm super tele', 'Varifocal zoom', 'Pancake lens', 'Mirror lens'],
     colorGrade: ['Teal & amber', 'Muted filmic', 'Cool tungsten', 'Punchy neon', 'Warm dusk', 'Sepia tones', 'High saturation', 'Desaturated', 'Vintage look', 'Modern vibrant', 'Bleach bypass', 'Natural cinema', 'Matte pastel', 'Neo-noir cool', 'Cinematic blue', 'Golden glow', 'Monochrome noir', 'Pastel dream', 'Harsh contrast', 'Soft lavender', 'Earthy tones', 'Electric neon', 'Retro VHS', 'Film negative', 'Polaroid fade', 'Kodachrome', 'Cineon log', 'ACES gamut', 'HDR bright', 'LUT custom'],
-    sound: ['Distant traffic', 'Low wind hum', 'Crowd murmur', 'Engine rumble', 'Quiet ambience', 'Thunder clap', 'Birdsong', 'City bustle', 'Ocean waves', 'Silent tension', 'Metal creak', 'Power grid buzz', 'Heartbeat pulse', 'Echoing footsteps', 'Whispering wind', 'Crackling fire', 'Dripping water', 'Rustling leaves', 'Humming machinery', 'Faint laughter', 'Screeching tires', 'Bubbling stream', 'Howling wolf', 'Chirping insects', 'Ticking clock', 'Ringing bell', 'Sizzling sparks', 'Gurgling liquid'],
+    sound: ['Distant traffic', 'Low wind hum', 'Crowd murmur', 'Engine rumble', 'Quiet ambience', 'Thunder clap', 'Birdsong', 'City bustle', 'Ocean waves', 'Silent tension', 'Metal creak', 'Power grid buzz', 'Heartbeat pulse', 'Echoing footsteps', 'Whispering wind', 'Crackling fire', 'Dripping water', 'Rustling leaves', 'Humming machinery', 'Faint laughter', 'Screeching tires', 'Bubbling stream', 'Howling wolf', 'Chirping insects', 'Ticking clock', 'Ringing bell', 'Sizzling sparks', 'Gurgling liquid', 'Refrigerator hum', 'Clock ticking', 'Breathing soft', 'Pages turning', 'Cup clinking', 'Chair creaking', 'Door closing', 'Distant siren', 'Phone buzzing', 'Window rattling', 'Fabric rustling', 'Hair brushing', 'Soap washing', 'Water running', 'Faucet drip', 'Rain gentle', 'Hail tapping', 'Wind through cracks', 'Silence empty', 'Keyboard typing'],
     sfx: ['Footsteps on wet pavement', 'Cloth rustle', 'Metal clink', 'Distant siren', 'Door creak', 'Gun cock', 'Glass shatter', 'Radio chatter', 'Breath close to mic', 'Rain on window', 'Whoosh transition', 'Impact hit', 'Servo whirr', 'Drone pass-by', 'Laser zap', 'Explosion boom', 'Sword clash', 'Potion bubble', 'Engine rev', 'Phone ring', 'Key turn', 'Zippo flick', 'Paper tear', 'Coin drop', 'Whistle blow', 'Bell toll', 'Chain rattle', 'Water splash', 'Fire crackle', 'Ice crack', 'Elevator ding', 'Neon sign buzz', 'Footsteps on gravel', 'Car door slam', 'Holster snap', 'Distant radio static', 'Crowd cheer swell', 'Glass tinkling', 'Steam hiss'],
-    music: ['Minimal synth pulse', 'Orchestral swell', 'Lo-fi ambience', 'Dark drone pad', 'Tense ticking rhythm', 'Sparse piano motif', 'Driving percussion', 'Warm analog bassline', 'Cinematic riser', 'No music', 'Ambient strings', 'Pulsing bass', 'Analog arpeggio', 'Hybrid orchestral', 'Jazz improvisation', 'Rock guitar riff', 'Electronic glitch', 'Folk acoustic', 'Choral voices', 'Percussive beat', 'Symphonic build', 'Trip-hop groove', 'Indie folk', 'Heavy metal', 'Classical piano', 'Reggae rhythm', 'Blues slide', 'Disco funk', 'World fusion'],
+    music: ['Minimal synth pulse', 'Orchestral swell', 'Lo-fi ambience', 'Dark drone pad', 'Tense ticking rhythm', 'Sparse piano motif', 'Driving percussion', 'Warm analog bassline', 'Cinematic riser', 'No music', 'Ambient strings', 'Pulsing bass', 'Analog arpeggio', 'Hybrid orchestral', 'Jazz improvisation', 'Rock guitar riff', 'Electronic glitch', 'Folk acoustic', 'Choral voices', 'Percussive beat', 'Symphonic build', 'Trip-hop groove', 'Indie folk', 'Heavy metal', 'Classical piano', 'Reggae rhythm', 'Blues slide', 'Disco funk', 'World fusion', 'Single piano note', 'Distant harp', 'Lonely cello', 'Sad violin', 'Haunting vocals', 'Whispered breath', 'Music box tinkle', 'Soft strings fade', 'Building tension', 'Quiet electric', 'Melancholic guitar', 'Hopeful swell', 'Emotional crescendo'],
     sig1: ['atmospheric haze', 'micro dust motes', 'breath in cold air', 'rain beads on skin', 'embers in frame', 'fog rolling in', 'light streaks', 'particle effects', 'smoke trails', 'water droplets', 'soft bloom trails', 'refraction shimmer', 'lens flare', 'depth blur', 'grain overlay', 'color bleed', 'motion trails', 'shadow play', 'highlight sparkle', 'texture weave', 'soft vignette', 'chromatic aberration', 'bokeh shapes', 'film scratches', 'light leaks', 'dust specks', 'water ripples', 'fire embers'],
     sig2: ['soft rim light', 'film grain', 'lens bloom', 'chromatic fringe', 'shallow DOF falloff', 'bokeh circles', 'motion blur', 'depth of field', 'flare spots', 'grain texture', 'anamorphic flares', 'subtle vignette', 'halo effect', 'glow aura', 'sharp contrast', 'soft diffusion', 'reflection mirror', 'silhouette outline', 'warm tint', 'cool shadow', 'flare burst', 'grain noise', 'bloom glow', 'vignette fade', 'edge blur', 'focus shift', 'light scatter', 'texture grain'],
     // Composition & detail presets
@@ -240,6 +349,38 @@ const DEFAULT_OPTION_SETS: OptionSets = {
     movement2: ['sits', 'stands', 'takes a seat', 'stops and looks around', 'is set down', 'rests', 'turns and sits', 'moves out of frame'],
     movementPace: ['slow', 'steady', 'brisk', 'hurried', 'hesitant', 'deliberate'],
     movementManner: ['confidently', 'nervously', 'quietly', 'carefully', 'casually', 'gracefully', 'awkwardly'],
+    // Creative Brief fields (Step 1)
+    sceneDescription: [],
+    mainSubject: ['Person', 'Landscape', 'Object', 'Abstract concept', 'Multi-character scene', 'Animal/Creature', 'Architectural element', 'Natural phenomenon'],
+    storyElements: ['Dialogue', 'Action sequence', 'Emotional moment', 'Transformation', 'Mystery/Discovery', 'Conflict', 'Resolution', 'Revelation', 'Loss', 'Victory', 'Journey', 'Reunion', 'Separation', 'Betrayal', 'Redemption', 'Sacrifice', 'Hope', 'Despair', 'Love', 'Revenge', 'Justice', 'Truth', 'Illusion', 'Power', 'Weakness'],
+    inspirationNotes: [],
+    // Advanced Technical (Step 13)
+    advancedTechnical: ['24fps cinematic', '60fps action', 'Variable ND filter effect', 'Macro lens focus', 'Tilt-shift miniature', 'Slow-motion 96fps', 'Fast-motion hyperlapse', 'Focus stacking', 'Long exposure', 'Short shutter freeze', 'High shutter drag', 'ISO grain intentional', 'Clean low-noise', 'Blown highlights artistic', 'Crushed blacks', 'Dynamic range stretched', 'Color science warm', 'Color science cool', 'Skin tone priority', 'Shadow detail preserve', 'Highlight recovery', 'Deep DOF', 'Shallow DOF', 'Infinite focus', 'Selective focus art'],
+    cinematicNotes: [],
+    // References & Inspiration (Step 16)
+    references: ['Film reference', 'Photography style', 'Artwork inspiration', 'Director style', 'Cinematographer technique', 'Period reference', 'Cultural reference', 'Music video aesthetic', 'Commercial style', 'Fashion editorials', 'Fine art paintings', 'Documentary style', 'Animation reference', 'Comic book style', 'Illustration style', 'Dream logic', 'Nightmare texture', 'Historical accuracy', 'Fantasy world-building', 'Sci-fi aesthetics', 'Horror atmosphere', 'Comedy timing', 'Tragedy gravitas', 'Documentary realism', 'Magical realism'],
+    inspirationStyle: ['Moody cinematic', 'Bright optimistic', 'Gritty documentary', 'Artistic painterly', 'Tech modern', 'Retro nostalgic', 'Minimalist clean', 'Ornate baroque', 'Surreal dreamlike', 'Hyperreal detailed', 'Soft romantic', 'Hard edgy', 'Organic natural', 'Geometric abstract', 'Vintage film', 'Digital contemporary', 'Analog warmth', 'Cold corporate', 'Warm intimate', 'Explosive dynamic'],
+    visualReference: [],
+    // Time/Season/Era (Step 17)
+    timeOfDay: ['Early morning (5-7am)', 'Sunrise golden (6-8am)', 'Morning blue (8-10am)', 'Late morning (10-12pm)', 'Midday harsh (12-2pm)', 'Early afternoon (2-4pm)', 'Late afternoon (4-5pm)', 'Golden hour (5-6:30pm)', 'Sunset orange (6-7pm)', 'Blue hour twilight (7-8pm)', 'Dusk transition (8-9pm)', 'Early night (9-10pm)', 'Deep night (10-12am)', 'Midnight (12-2am)', 'Pre-dawn (4-5am)', 'Overcast morning', 'Overcast afternoon', 'Cloudy sunset', 'Stormy midday', 'Foggy dawn'],
+    season: ['Early spring', 'Late spring', 'Early summer', 'Late summer', 'Early autumn', 'Late autumn', 'Early winter', 'Late winter', 'Spring bloom', 'Summer heat', 'Autumn harvest', 'Winter freeze', 'Rainy season', 'Dry season', 'Transition period'],
+    era: ['Present day', '1920s Art Deco', '1950s Retro', '1970s disco', '1980s neon', '1990s grunge', 'Victorian era', 'Medieval times', 'Ancient Rome', 'Renaissance period', 'Industrial revolution', 'Steampunk alternative', 'Cyberpunk future', 'Post-apocalyptic', 'Far future sci-fi', 'Alternate history', 'Mythic timeless', 'Fantasy medieval', 'Western frontier', 'Jazz age'],
+    culturalContext: ['Western contemporary', 'Eastern traditional', 'African aesthetic', 'Latin American', 'Middle Eastern', 'Asian fusion', 'Nordic minimalist', 'Mediterranean warmth', 'Celtic mystical', 'Indigenous authentic', 'Urban street culture', 'Luxury high-fashion', 'Bohemian artistic', 'Corporate professional', 'Military tactical', 'Academic scholarly', 'Spiritual sacred', 'Secular modern'],
+    // VFX & Effects (Step 18)
+    specialEffects: ['Particle effects', 'Smoke simulation', 'Fire simulation', 'Water simulation', 'Cloth simulation', 'Hair simulation', 'Liquid dynamics', 'Destruction effects', 'Explosion pyrotechnics', 'Dust storms', 'Rain/snow effects', 'Lightning effects', 'Light saber glow', 'Magical auras', 'Portal effects', 'Time distortion', 'Blur effects', 'Chromatic aberration', 'Lens flares', 'Bloom glow', 'Motion blur intentional', 'Depth of field art', 'Vignette artistic', 'Color shift effects', 'Glitch aesthetic'],
+    practicalElements: ['Smoke machines', 'Fog effects', 'Water sprayers', 'Rain rigs', 'Snow machines', 'Wind machines', 'Pyrotechnics', 'Explosives controlled', 'Fire safety rigging', 'Light rigs', 'Mirror rigs', 'Bounce boards', 'Silk diffusion', 'Flag negative space', 'Practical set pieces', 'Built environments', 'Miniature sets', 'Forced perspective', 'In-camera effects', 'Practical makeup'],
+    vfxNotes: [],
+    // Character Development (Step 19)
+    characterDevelopment: ['Origin story', 'Inner conflict', 'Goal motivation', 'Fear obstacle', 'Growth arc', 'Relationship dynamic', 'Dialogue pattern', 'Movement signature', 'Costume symbolism', 'Color association', 'Object significance', 'Scar/mark significance', 'Accent/speech quirk', 'Mannerism unique', 'Gesture repetitive'],
+    emotionalArc: ['Happy start', 'Sad start', 'Angry start', 'Fearful start', 'Confused start', 'Hopeful start', 'Gradual change', 'Sudden shift', 'Internal struggle', 'External conflict', 'Moment of truth', 'Climactic emotion', 'Resolution peace', 'Bittersweet end', 'Tragic end', 'Triumphant end'],
+    subtext: ['Unspoken tension', 'Longing underneath', 'Hidden resentment', 'Secret love', 'Fear masked', 'Strength fragile', 'Weakness hidden', 'Jealousy simmering', 'Regret lingering', 'Hope surviving'],
+    // Pacing & Timing (Step 20)
+    pacing: ['Slow meditative', 'Steady building', 'Brisk energetic', 'Frantic urgent', 'Mixed rhythmic', 'Staccato punchy', 'Flowing smooth', 'Layered complex', 'Simple clear', 'Chaotic overwhelming', 'Minimalist sparse', 'Maximal dense', 'Progressive escalation', 'Cyclical repetition', 'Unpredictable erratic'],
+    timing: ['Extended shot', 'Quick cut', 'Perfect beat', 'Held moment', 'Rushed transition', 'Slow burn', 'Climactic moment', 'Recovery beat', 'Silence powerful', 'Overlap dialogue', 'Music sync tight', 'Music sync loose'],
+    rhythmNotes: [],
+    // Final Touches (Step 21)
+    finalTouches: ['Color grade perfect', 'Sound design complete', 'Music perfectly placed', 'Visual FX polished', 'Character arc clear', 'Dialogue impactful', 'Pacing perfect', 'Emotion resonant', 'Message clear', 'Unique signature', 'Brand consistency', 'Technical excellence', 'Artistic integrity', 'Emotional truth', 'Visual poetry'],
+    customDetails: [],
   },
   classic: {
     genre: ['Portrait', 'Fashion editorial', 'Documentary', 'Landscape', 'Architectural', 'Street photography', 'Nature scene', 'Still life', 'Event coverage', 'Product shot', 'Food styling', 'Travel journal', 'Editorial report', 'Lifestyle', 'Beauty close-up', 'Macro nature', 'Urban exploration', 'Family portrait', 'Pet photography', 'Sports action', 'Concert capture', 'Wedding ceremony', 'Graduation moment', 'Corporate headshot', 'Art installation', 'Historical reenactment', 'Wildlife safari', 'Aerial landscape', 'Underwater scene', 'Minimalist abstract'],
@@ -273,11 +414,46 @@ const DEFAULT_OPTION_SETS: OptionSets = {
     movement2: ['sits', 'stands', 'takes a seat', 'is set down', 'rests', 'moves out of frame'],
     movementPace: ['slow', 'steady', 'brisk', 'hurried', 'hesitant', 'deliberate'],
     movementManner: ['confidently', 'nervously', 'quietly', 'carefully', 'casually', 'gracefully', 'awkwardly'],
+    // Creative Brief fields (Step 1)
+    sceneDescription: [],
+    mainSubject: ['Person', 'Landscape', 'Object', 'Abstract concept', 'Multi-character scene', 'Animal/Creature', 'Architectural element', 'Natural phenomenon'],
+    storyElements: ['Dialogue', 'Action sequence', 'Emotional moment', 'Transformation', 'Mystery/Discovery', 'Conflict', 'Resolution', 'Revelation', 'Loss', 'Victory', 'Journey', 'Reunion', 'Separation', 'Betrayal', 'Redemption', 'Sacrifice', 'Hope', 'Despair', 'Love', 'Revenge', 'Justice', 'Truth', 'Illusion', 'Power', 'Weakness'],
+    inspirationNotes: [],
+    // Advanced Technical (Step 13)
+    advancedTechnical: ['24fps cinematic', '60fps action', 'Variable ND filter effect', 'Macro lens focus', 'Tilt-shift miniature', 'Slow-motion 96fps', 'Fast-motion hyperlapse', 'Focus stacking', 'Long exposure', 'Short shutter freeze', 'High shutter drag', 'ISO grain intentional', 'Clean low-noise', 'Blown highlights artistic', 'Crushed blacks', 'Dynamic range stretched', 'Color science warm', 'Color science cool', 'Skin tone priority', 'Shadow detail preserve', 'Highlight recovery', 'Deep DOF', 'Shallow DOF', 'Infinite focus', 'Selective focus art'],
+    cinematicNotes: [],
+    // References & Inspiration (Step 16)
+    references: ['Film reference', 'Photography style', 'Artwork inspiration', 'Director style', 'Cinematographer technique', 'Period reference', 'Cultural reference', 'Music video aesthetic', 'Commercial style', 'Fashion editorials', 'Fine art paintings', 'Documentary style', 'Animation reference', 'Comic book style', 'Illustration style', 'Dream logic', 'Nightmare texture', 'Historical accuracy', 'Fantasy world-building', 'Sci-fi aesthetics', 'Horror atmosphere', 'Comedy timing', 'Tragedy gravitas', 'Documentary realism', 'Magical realism'],
+    inspirationStyle: ['Moody cinematic', 'Bright optimistic', 'Gritty documentary', 'Artistic painterly', 'Tech modern', 'Retro nostalgic', 'Minimalist clean', 'Ornate baroque', 'Surreal dreamlike', 'Hyperreal detailed', 'Soft romantic', 'Hard edgy', 'Organic natural', 'Geometric abstract', 'Vintage film', 'Digital contemporary', 'Analog warmth', 'Cold corporate', 'Warm intimate', 'Explosive dynamic'],
+    visualReference: [],
+    // Time/Season/Era (Step 17)
+    timeOfDay: ['Early morning (5-7am)', 'Sunrise golden (6-8am)', 'Morning blue (8-10am)', 'Late morning (10-12pm)', 'Midday harsh (12-2pm)', 'Early afternoon (2-4pm)', 'Late afternoon (4-5pm)', 'Golden hour (5-6:30pm)', 'Sunset orange (6-7pm)', 'Blue hour twilight (7-8pm)', 'Dusk transition (8-9pm)', 'Early night (9-10pm)', 'Deep night (10-12am)', 'Midnight (12-2am)', 'Pre-dawn (4-5am)', 'Overcast morning', 'Overcast afternoon', 'Cloudy sunset', 'Stormy midday', 'Foggy dawn'],
+    season: ['Early spring', 'Late spring', 'Early summer', 'Late summer', 'Early autumn', 'Late autumn', 'Early winter', 'Late winter', 'Spring bloom', 'Summer heat', 'Autumn harvest', 'Winter freeze', 'Rainy season', 'Dry season', 'Transition period'],
+    era: ['Present day', '1920s Art Deco', '1950s Retro', '1970s disco', '1980s neon', '1990s grunge', 'Victorian era', 'Medieval times', 'Ancient Rome', 'Renaissance period', 'Industrial revolution', 'Steampunk alternative', 'Cyberpunk future', 'Post-apocalyptic', 'Far future sci-fi', 'Alternate history', 'Mythic timeless', 'Fantasy medieval', 'Western frontier', 'Jazz age'],
+    culturalContext: ['Western contemporary', 'Eastern traditional', 'African aesthetic', 'Latin American', 'Middle Eastern', 'Asian fusion', 'Nordic minimalist', 'Mediterranean warmth', 'Celtic mystical', 'Indigenous authentic', 'Urban street culture', 'Luxury high-fashion', 'Bohemian artistic', 'Corporate professional', 'Military tactical', 'Academic scholarly', 'Spiritual sacred', 'Secular modern'],
+    // VFX & Effects (Step 18)
+    specialEffects: ['Particle effects', 'Smoke simulation', 'Fire simulation', 'Water simulation', 'Cloth simulation', 'Hair simulation', 'Liquid dynamics', 'Destruction effects', 'Explosion pyrotechnics', 'Dust storms', 'Rain/snow effects', 'Lightning effects', 'Light saber glow', 'Magical auras', 'Portal effects', 'Time distortion', 'Blur effects', 'Chromatic aberration', 'Lens flares', 'Bloom glow', 'Motion blur intentional', 'Depth of field art', 'Vignette artistic', 'Color shift effects', 'Glitch aesthetic'],
+    practicalElements: ['Smoke machines', 'Fog effects', 'Water sprayers', 'Rain rigs', 'Snow machines', 'Wind machines', 'Pyrotechnics', 'Explosives controlled', 'Fire safety rigging', 'Light rigs', 'Mirror rigs', 'Bounce boards', 'Silk diffusion', 'Flag negative space', 'Practical set pieces', 'Built environments', 'Miniature sets', 'Forced perspective', 'In-camera effects', 'Practical makeup'],
+    vfxNotes: [],
+    // Character Development (Step 19)
+    characterDevelopment: ['Origin story', 'Inner conflict', 'Goal motivation', 'Fear obstacle', 'Growth arc', 'Relationship dynamic', 'Dialogue pattern', 'Movement signature', 'Costume symbolism', 'Color association', 'Object significance', 'Scar/mark significance', 'Accent/speech quirk', 'Mannerism unique', 'Gesture repetitive'],
+    emotionalArc: ['Happy start', 'Sad start', 'Angry start', 'Fearful start', 'Confused start', 'Hopeful start', 'Gradual change', 'Sudden shift', 'Internal struggle', 'External conflict', 'Moment of truth', 'Climactic emotion', 'Resolution peace', 'Bittersweet end', 'Tragic end', 'Triumphant end'],
+    subtext: ['Unspoken tension', 'Longing underneath', 'Hidden resentment', 'Secret love', 'Fear masked', 'Strength fragile', 'Weakness hidden', 'Jealousy simmering', 'Regret lingering', 'Hope surviving'],
+    // Pacing & Timing (Step 20)
+    pacing: ['Slow meditative', 'Steady building', 'Brisk energetic', 'Frantic urgent', 'Mixed rhythmic', 'Staccato punchy', 'Flowing smooth', 'Layered complex', 'Simple clear', 'Chaotic overwhelming', 'Minimalist sparse', 'Maximal dense', 'Progressive escalation', 'Cyclical repetition', 'Unpredictable erratic'],
+    timing: ['Extended shot', 'Quick cut', 'Perfect beat', 'Held moment', 'Rushed transition', 'Slow burn', 'Climactic moment', 'Recovery beat', 'Silence powerful', 'Overlap dialogue', 'Music sync tight', 'Music sync loose'],
+    rhythmNotes: [],
+    // Final Touches (Step 21)
+    finalTouches: ['Color grade perfect', 'Sound design complete', 'Music perfectly placed', 'Visual FX polished', 'Character arc clear', 'Dialogue impactful', 'Pacing perfect', 'Emotion resonant', 'Message clear', 'Unique signature', 'Brand consistency', 'Technical excellence', 'Artistic integrity', 'Emotional truth', 'Visual poetry'],
+    customDetails: [],
   },
   drone: {
     genre: ['Drone landscape', 'Aerial establishing', 'Travel aerial', 'Nature documentary', 'Architectural flyover', 'Coastal aerial', 'Mountain aerial', 'City skyline', 'Desert dunes', 'Forest canopy', 'Canyon reveal', 'River delta', 'Lakeside panorama', 'Snowy alpine', 'Volcanic terrain', 'Island coastline', 'Countryside mosaic', 'Night city aerial', 'Storm-chasing aerial', 'Golden hour landscape'],
     shot: ['Drone aerial', 'High-altitude establishing', 'Top-down bird\'s-eye', 'Low pass flyover', 'Orbit reveal', 'Parallax sweep', 'Tilt-down reveal', 'Rise-and-reveal', 'Push-in over terrain', 'Tracking along ridgeline', 'Coastline follow', 'River follow', 'Canyon glide', 'City skyline orbit', 'Architectural reveal', 'Time-lapse aerial'],
     role: ['mountain range', 'coastline cliffs', 'forest canopy', 'river canyon', 'desert dunes', 'city skyline', 'winding road', 'waterfall', 'glacier valley', 'historic architecture', 'modern skyline', 'coastal village', 'farmland patterns', 'lake shoreline', 'volcanic crater'],
+    hairColor: ['Natural earth', 'Forested green', 'Sky blue', 'Water silver', 'Sand golden', 'Rock gray', 'Vegetation brown', 'Cloud white', 'Shadow black', 'Sunrise orange'],
+    eyeColor: ['Earth brown', 'Ocean blue', 'Forest green', 'Sky gray', 'Golden amber', 'Slate dark', 'Azure bright', 'Violet twilight', 'Emerald rich', 'Topaz clear'],
+    bodyDescriptor: ['Mountain range', 'Rolling hills', 'Jagged peaks', 'Smooth valleys', 'Steep slopes', 'Gentle contours', 'Vast expanse', 'Narrow gorge', 'Wide plateau', 'Layered terrain'],
     wardrobe: ['no people visible', 'clean landscape-only frame', 'natural textures emphasized', 'wet reflective surfaces', 'snow-covered peaks', 'autumn foliage', 'sunlit haze layers', 'mist in valleys', 'dusty heat shimmer', 'crisp winter air', 'long shadows', 'cloud shadows moving'],
     pose: ['waves crash against rocks', 'clouds roll over peaks', 'fog drifts through trees', 'traffic streams below', 'birds wheel in the distance', 'wind ripples grass', 'water glitters in sunlight', 'snow blows across ridges', 'rain sheets across the horizon'],
     mood: ['Expansive', 'Serene', 'Majestic', 'Adventurous', 'Minimal', 'Awe-inspiring', 'Quiet', 'Stormy', 'Mysterious', 'Crisp', 'Dreamy', 'Dramatic'],
@@ -297,43 +473,132 @@ const DEFAULT_OPTION_SETS: OptionSets = {
     music: ['Ambient pad', 'Cinematic riser', 'Minimal synth pulse', 'No music', 'Orchestral swell', 'Lo-fi ambience'],
     framingNotes: ['rule of thirds', 'leading lines', 'negative space', 'layered depth', 'horizon placement', 'symmetry', 'foreground framing', 'strong vanishing point', 'wide panorama composition'],
     lightingIntensity: ['soft', 'dim', 'medium', 'harsh', 'glowing', 'punchy'],
-    movementSubjectType: ['Camera', 'Object'],
+    movementSubjectType: ['Camera', 'Landscape', 'Weather', 'Light', 'Time', 'Perspective'],
     movement1: ['glides forward', 'orbits the landmark', 'rises above the treeline', 'tilts down to reveal the valley', 'tracks along the ridgeline', 'follows the coastline'],
     movement2: ['pulls back to a wide panorama', 'holds steady on the horizon', 'banks gently to reframe', 'descends toward the shoreline', 'arcs to reveal the skyline'],
     movementPace: ['slow', 'steady', 'brisk'],
     movementManner: ['smoothly', 'gently', 'cinematically', 'quietly'],
+    dialogue: ['No dialogue', 'Narrator whispers', 'Ambient narration', 'Subtle voice-over'],
+    pronoun: ['None', 'It', 'They', 'The'],
+    dialogue_verb: ['floats', 'sweeps', 'glides', 'drifts', 'soars'],
+    mix_notes: ['Drone hum removed', 'Clean audio bed', 'Ambient only', 'Sound effects added'],
+    position: ['Above landscape', 'Over water', 'Through canyon', 'Along coast', 'Across plain'],
+    activity: ['sweeping across', 'orbiting slowly', 'rising gradually', 'descending gently', 'banking smoothly'],
+    accessory: ['None visible', 'Cloud formations', 'Light patterns', 'Shadow play', 'Weather effects'],
+    explicit_abilities: ['High altitude flight', 'Smooth orbits', 'Precise framing', 'Long duration', 'Stable hover'],
+    body_description: ['Expansive landmass', 'Textured terrain', 'Water features', 'Architectural lines', 'Natural contours'],
+    sexual_description: ['Not applicable', 'N/A', 'N/A', 'N/A'],
+    fetish: ['Not applicable'],
+    bodyFocus: ['horizon line', 'landscape texture', 'light quality', 'atmospheric depth', 'architectural detail'],
+    sensation: ['wind movement', 'light changes', 'scale vastness', 'depth layers', 'time passage'],
+    // Creative Brief fields (Step 1)
+    sceneDescription: [],
+    mainSubject: ['Landscape', 'Cityscape', 'Water feature', 'Mountain range', 'Forest/vegetation', 'Weather phenomenon', 'Architectural landmark', 'Natural wonder'],
+    storyElements: ['Movement', 'Change', 'Perspective', 'Discovery', 'Journey', 'Revelation', 'Transformation', 'Beauty', 'Scale', 'Power', 'Vastness', 'Transition', 'Contrast', 'Pattern', 'Layering'],
+    inspirationNotes: [],
+    // Advanced Technical (Step 13)
+    advancedTechnical: ['4K resolution', '8K resolution', 'Raw format', 'Log color space', 'High frame rate', 'Slow motion', 'Time-lapse acceleration', 'Stabilization gimbal', 'Manual gimbal', 'Low light ISO boost', 'High shutter speed', 'Long exposure', 'ND filter strong', 'Polarizing filter', 'Color gel filter', 'DCI color'],
+    cinematicNotes: [],
+    // References & Inspiration (Step 16)
+    references: ['Aerial photography', 'Landscape photography', 'Documentary drone footage', 'Travel videos', 'Nature documentaries', 'Architectural surveys', 'Environmental art', 'Topographic mapping', 'Real estate aerial', 'Sports aerial', 'News drone footage', 'Commercial drone work', 'Fine art aerial', 'Fantasy landscape', 'Sci-fi vistas', 'Historical aerial', 'Cultural landmark', 'Natural wonder', 'Weather phenomenon', 'Space imagery'],
+    inspirationStyle: ['Majestic expansive', 'Intimate detail', 'Geometric pattern', 'Organic flowing', 'Urban grid', 'Natural chaos', 'Minimalist sparse', 'Textural complex', 'Color-driven', 'Light-driven', 'Movement-driven', 'Static serene'],
+    visualReference: [],
+    // Time/Season/Era (Step 17)
+    timeOfDay: ['Early morning (5-7am)', 'Sunrise golden (6-8am)', 'Morning blue (8-10am)', 'Late morning (10-12pm)', 'Midday harsh (12-2pm)', 'Early afternoon (2-4pm)', 'Late afternoon (4-5pm)', 'Golden hour (5-6:30pm)', 'Sunset orange (6-7pm)', 'Blue hour twilight (7-8pm)', 'Dusk transition (8-9pm)', 'Early night (9-10pm)', 'Deep night (10-12am)', 'Midnight (12-2am)', 'Pre-dawn (4-5am)'],
+    season: ['Early spring', 'Late spring', 'Early summer', 'Late summer', 'Early autumn', 'Late autumn', 'Early winter', 'Late winter', 'Peak foliage', 'Bare branches', 'Snow season', 'Flood season', 'Wildflower bloom'],
+    era: ['Present day', 'Historical past', 'Future vision', 'Timeless natural', 'Seasonal cycle', 'Climate change present', 'Protected pristine', 'Developed urban', 'Restored natural', 'Active changing'],
+    culturalContext: ['Untouched wilderness', 'Cultural landscape', 'Sacred site', 'Economic region', 'Agricultural zone', 'Urban center', 'Historical monument', 'Natural wonder', 'Developed infrastructure', 'Environmental preservation'],
+    // VFX & Effects (Step 18)
+    specialEffects: ['Color grading', 'LUT application', 'Lens flare', 'Bloom effect', 'Atmospheric haze', 'Sharpening boost', 'Contrast enhancement', 'Saturation boost', 'Desaturation', 'Monochrome conversion', 'Sepia tone', 'Color grading look', 'Skin tone preservation', 'Highlights recovery', 'Shadow lift', 'Crush blacks', 'Clean highlights'],
+    practicalElements: ['No practical elements', 'Gimbal stabilization', 'Filter usage', 'Lens choice', 'Exposure compensation', 'ISO setting', 'Shutter speed', 'White balance', 'Camera angle', 'Flight path'],
+    vfxNotes: [],
+    // Character Development (Step 19)
+    characterDevelopment: ['N/A', 'Environmental change', 'Light transformation', 'Weather development', 'Season shift', 'Day to night', 'Growth over time'],
+    emotionalArc: ['Awe inspiring', 'Peaceful serene', 'Dramatic intense', 'Mysterious subtle', 'Joyful bright', 'Somber dark', 'Hopeful uplift'],
+    subtext: [],
+    // Pacing & Timing (Step 20)
+    pacing: ['Slow meditative', 'Steady consistent', 'Brisk movement', 'Accelerating build', 'Decelerating calm', 'Variable rhythm'],
+    timing: ['Extended hold', 'Quick transition', 'Perfect beat sync', 'Held moment', 'Music sync tight', 'Music sync loose'],
+    rhythmNotes: [],
+    // Final Touches (Step 21)
+    finalTouches: ['Color grading complete', 'Sound design done', 'Music perfectly placed', 'Technical specs right', 'Emotional impact clear', 'Unique perspective', 'Stunning beauty', 'Compelling story', 'Technical excellence'],
+    customDetails: [],
   },
   animation: {
     genre: ['Anime action', 'Pixar-style 3D', 'Hand-drawn 2D', 'Stop-motion cozy', 'Studio Ghibli vibe', 'Comic-book stylized', 'Claymation', 'Cel-shaded adventure', 'Retro cartoon', 'Fantasy animation', 'Sci-fi animation'],
-    shot: ['Wide establishing', 'Dynamic tracking', 'Close-up portrait', 'Over-the-shoulder', 'Hero shot', 'Panoramic sweep', 'Montage beat'],
-    role: ['hero character', 'sidekick', 'villain', 'cute creature', 'robot companion', 'magical student', 'space pilot', 'wandering adventurer', 'mystic mentor', 'comic relief'],
-    hairColor: ['black', 'brown', 'blonde', 'red', 'silver', 'white', 'neon pink', 'neon blue', 'multicolored'],
-    eyeColor: ['brown', 'green', 'blue', 'gray', 'gold', 'violet', 'heterochromia'],
-    bodyDescriptor: ['tall', 'short', 'slender', 'athletic build', 'chibi proportions', 'heroic silhouette', 'exaggerated proportions'],
-    wardrobe: ['stylized outfit', 'school uniform', 'fantasy armor', 'retro jumpsuit', 'hoodie streetwear', 'flowing cloak', 'colorful costume', 'simple silhouette'],
-    pose: ['expressive gesture', 'dynamic action pose', 'mid-leap', 'dramatic turn', 'running stance', 'hero landing', 'quiet contemplative pose'],
-    mood: ['Whimsical', 'Energetic', 'Dreamy', 'Triumphant', 'Mysterious', 'Playful', 'Heartfelt', 'Epic'],
-    lighting: ['Soft bounce', 'Golden hour', 'Neon rim light', 'Volumetric shafts', 'Moonlight', 'Studio key light', 'Painterly glow'],
-    environment: ['Fantasy town', 'Neon city', 'Forest trail', 'Ancient temple', 'Space station', 'Coastal cliffs', 'Mountain cabin', 'Magical library', 'Toy workshop'],
-    environmentTexture: ['painterly', 'cel-shaded', 'soft watercolor', 'hand-inked', 'clean vector', 'chunky clay texture', 'paper cutout texture'],
-    lightingIntensity: ['soft', 'medium', 'glowing', 'punchy'],
-    cameraMove: ['Slow push', 'Lateral dolly', 'Orbit reveal', 'Whip pan', 'Tilt up', 'Arc shot', 'Locked-off tableau'],
-    lens: ['35mm spherical', '24mm wide', '50mm prime', 'Anamorphic 40mm', 'Stylized virtual camera'],
-    focusTarget: ['the character', 'the face', 'the eyes', 'the hands', 'the magical object', 'the backdrop'],
-    colorGrade: ['High saturation', 'Pastel dream', 'Vibrant colors', 'Matte pastel', 'Neo-noir cool', 'Warm golden', 'Toon-shaded'],
-    weather: ['Clear', 'Soft rain', 'Snow flurry', 'Foggy morning', 'Starry night', 'Overcast'],
-    lightInteraction: ['wraps gently', 'paints rim highlights', 'diffuses softly', 'creates halos', 'glitters on surfaces', 'casts glow'],
-    sig1: ['hand-drawn linework', 'cel shading', 'painterly brush strokes', 'bouncy squash-and-stretch', 'clean outlines', 'vibrant color fills', 'soft glow effects', 'dynamic motion lines', 'expressive facial details', 'textured backgrounds'],
-    sig2: ['stylized motion blur', 'sparkle particles', 'soft bloom', 'film grain (subtle)', 'comic halftone texture', 'light rays', 'color pop', 'dynamic lighting', 'shadow accents', 'vignette fade'],
-    sound: ['Cartoon ambience', 'City bustle (stylized)', 'Forest ambience', 'Quiet room tone', 'No dialogue', 'Playful crowd walla', 'Retro arcade room tone', 'Toy workshop ambience', 'Windy rooftop ambience', 'Rain-on-window (stylized)', 'Sci-fi engine hum (soft)', 'Magical shimmer bed'],
-    sfx: ['Whoosh transitions', 'Impact hit', 'Sparkle chimes', 'Footsteps', 'Magic shimmer', 'UI beeps', 'Boing bounce', 'Cartoon slide whistle', 'Pop sparkle', 'Comic punch thwack', 'Glitch blip', 'Energy zap', 'Page flip', 'Bubble pop', 'Chime stinger'],
-    music: ['Upbeat orchestral', 'Lo-fi beat', 'Chiptune', 'Ambient pad', 'No music', 'Energetic pop', 'Cinematic adventure', 'Whimsical tune', 'Fantasy score', 'Retro synthwave'],
-    framingNotes: ['rule of thirds', 'center-framed', 'dynamic diagonals', 'strong silhouettes', 'negative space'],
-    movementSubjectType: ['Person', 'Object'],
-    movement1: ['runs in', 'turns dramatically', 'jumps into frame', 'reaches out', 'spins'],
-    movement2: ['lands and poses', 'stops and looks around', 'moves out of frame', 'smiles and waves'],
-    movementPace: ['slow', 'steady', 'brisk', 'hurried'],
-    movementManner: ['confidently', 'playfully', 'dramatically', 'gracefully'],
+    shot: ['Wide establishing', 'Dynamic tracking', 'Close-up portrait', 'Over-the-shoulder', 'Hero shot', 'Panoramic sweep', 'Montage beat', 'Dutch angle', 'Bird\'s eye view', 'Low angle', 'High angle', 'Extreme close-up', 'Medium close-up', 'Two-shot', 'Point-of-view', 'Insert detail', 'Rack focus reveal'],
+    role: ['hero character', 'sidekick', 'villain', 'cute creature', 'robot companion', 'magical student', 'space pilot', 'wandering adventurer', 'mystic mentor', 'comic relief', 'noble knight', 'wise elder', 'mysterious stranger', 'loyal companion', 'fearless leader'],
+    hairColor: ['black', 'brown', 'blonde', 'red', 'silver', 'white', 'neon pink', 'neon blue', 'multicolored', 'pastel purple', 'mint green', 'golden yellow'],
+    eyeColor: ['brown', 'green', 'blue', 'gray', 'gold', 'violet', 'heterochromia', 'ruby red', 'emerald green', 'sapphire blue', 'amber gold', 'silver white'],
+    bodyDescriptor: ['tall', 'short', 'slender', 'athletic build', 'chibi proportions', 'heroic silhouette', 'exaggerated proportions', 'petite', 'lanky', 'stocky', 'graceful', 'muscular', 'ethereal'],
+    wardrobe: ['stylized outfit', 'school uniform', 'fantasy armor', 'retro jumpsuit', 'hoodie streetwear', 'flowing cloak', 'colorful costume', 'simple silhouette', 'magical robes', 'tech-wear', 'battle gear', 'casual streetwear', 'formal attire', 'adventure gear', 'mystical garb'],
+    pose: ['expressive gesture', 'dynamic action pose', 'mid-leap', 'dramatic turn', 'running stance', 'hero landing', 'quiet contemplative pose', 'power stance', 'peaceful sit', 'celebratory jump', 'determined walk', 'shocked expression', 'triumphant raise'],
+    mood: ['Whimsical', 'Energetic', 'Dreamy', 'Triumphant', 'Mysterious', 'Playful', 'Heartfelt', 'Epic', 'Melancholic', 'Hopeful', 'Tense', 'Joyful', 'Somber', 'Adventurous'],
+    lighting: ['Soft bounce', 'Golden hour', 'Neon rim light', 'Volumetric shafts', 'Moonlight', 'Studio key light', 'Painterly glow', 'Glowing magic', 'Harsh contrast', 'Soft diffuse', 'Colorful gels', 'Practical lamps', 'Silhouette back', 'Side light'],
+    environment: ['Fantasy town', 'Neon city', 'Forest trail', 'Ancient temple', 'Space station', 'Coastal cliffs', 'Mountain cabin', 'Magical library', 'Toy workshop', 'Digital realm', 'School grounds', 'Castle halls', 'Underground cavern', 'Floating island', 'Bustling marketplace'],
+    environmentTexture: ['painterly', 'cel-shaded', 'soft watercolor', 'hand-inked', 'clean vector', 'chunky clay texture', 'paper cutout texture', 'smooth gradient', 'textured brushwork', 'outlined bold', 'shaded soft', 'geometric clean'],
+    weather: ['Clear', 'Soft rain', 'Snow flurry', 'Foggy morning', 'Starry night', 'Overcast', 'Sunny bright', 'Cloudy soft', 'Rainbow arc', 'Storm brewing', 'Magical mist', 'Aurora glow', 'Twilight dusk'],
+    lightInteraction: ['wraps gently', 'paints rim highlights', 'diffuses softly', 'creates halos', 'glitters on surfaces', 'casts glow', 'sparkles magical', 'bounces playfully', 'shimmers ethereal', 'pulses energy', 'radiates warmth', 'flickers mystical'],
+    sig1: ['hand-drawn linework', 'cel shading', 'painterly brush strokes', 'bouncy squash-and-stretch', 'clean outlines', 'vibrant color fills', 'soft glow effects', 'dynamic motion lines', 'expressive facial details', 'textured backgrounds', 'comic book dots', 'stylized shadows'],
+    sig2: ['stylized motion blur', 'sparkle particles', 'soft bloom', 'film grain (subtle)', 'comic halftone texture', 'light rays', 'color pop', 'dynamic lighting', 'shadow accents', 'vignette fade', 'magical shine', 'dramatic flare'],
+    sound: ['Cartoon ambience', 'City bustle (stylized)', 'Forest ambience', 'Quiet room tone', 'Playful crowd walla', 'Retro arcade room tone', 'Toy workshop ambience', 'Windy rooftop ambience', 'Magical shimmer bed', 'Fantasy forest hush', 'Space station hum', 'School bell ring', 'Temple bells toll', 'Castle stone echo'],
+    sfx: ['Whoosh transitions', 'Impact hit', 'Sparkle chimes', 'Footsteps', 'Magic shimmer', 'UI beeps', 'Boing bounce', 'Cartoon slide whistle', 'Pop sparkle', 'Comic punch thwack', 'Glitch blip', 'Energy zap', 'Page flip', 'Bubble pop', 'Chime stinger', 'Power up sound', 'Transformation whoosh', 'Victory chime'],
+    music: ['Upbeat orchestral', 'Lo-fi beat', 'Chiptune', 'Ambient pad', 'No music', 'Energetic pop', 'Cinematic adventure', 'Whimsical tune', 'Fantasy score', 'Retro synthwave', 'Magical theme', 'Adventure march', 'Battle theme', 'Emotional piano', 'Epic build'],
+    cameraMove: ['Slow push', 'Lateral dolly', 'Orbit reveal', 'Whip pan', 'Tilt up', 'Arc shot', 'Locked-off tableau', 'Dynamic track', 'Quick zoom', 'Spin around', 'Floating drift'],
+    lens: ['35mm spherical', '24mm wide', '50mm prime', 'Anamorphic 40mm', 'Stylized virtual camera', '85mm portrait', '16mm ultra-wide', 'Fish-eye stylized'],
+    focusTarget: ['the character', 'the face', 'the eyes', 'the hands', 'the magical object', 'the backdrop', 'the action', 'the expression'],
+    colorGrade: ['High saturation', 'Pastel dream', 'Vibrant colors', 'Matte pastel', 'Neo-noir cool', 'Warm golden', 'Toon-shaded', 'Comic book', 'Bright vivid', 'Muted soft', 'High contrast bold', 'Stylized pop'],
+    framingNotes: ['rule of thirds', 'center-framed', 'dynamic diagonals', 'strong silhouettes', 'negative space', 'leading lines', 'balanced symmetry', 'tight crop'],
+    movementSubjectType: ['Person', 'Object', 'Creature', 'Magic', 'Energy', 'Spirit'],
+    movement1: ['runs in', 'turns dramatically', 'jumps into frame', 'reaches out', 'spins', 'flies in', 'materializes', 'charges forward', 'dashes speedily', 'glides gracefully'],
+    movement2: ['lands and poses', 'stops and looks around', 'moves out of frame', 'smiles and waves', 'stands triumphant', 'sits peacefully', 'disappears mysteriously', 'fades gently', 'transforms completely', 'embraces ally'],
+    movementPace: ['slow', 'steady', 'brisk', 'hurried', 'graceful', 'frantic', 'deliberate'],
+    movementManner: ['confidently', 'playfully', 'dramatically', 'gracefully', 'heroically', 'mysteriously', 'cheerfully', 'solemnly'],
+    dialogue: ['Character speaks', 'Internal monologue', 'Whispered thought', 'Shouted exclamation', 'Mysterious voice', 'No dialogue'],
+    pronoun: ['They', 'He', 'She', 'I', 'We'],
+    dialogue_verb: ['says', 'exclaims', 'whispers', 'shouts', 'murmurs', 'declares', 'questions', 'laughs'],
+    mix_notes: ['Clear dialogue', 'Emotional delivery', 'Energetic tone', 'Soft whisper', 'Powerful shout'],
+    position: ['center frame', 'left side', 'right side', 'background', 'foreground', 'elevated', 'lowered', 'off-screen'],
+    activity: ['battling', 'exploring', 'discovering', 'learning', 'celebrating', 'mourning', 'thinking', 'creating'],
+    accessory: ['magical staff', 'mystical pendant', 'ancient weapon', 'glowing crystal', 'enchanted scroll', 'power ring', 'mystical artifact', 'worn map', 'treasure chest', 'portal key'],
+    explicit_abilities: ['Magic casting', 'Super strength', 'Flight ability', 'Time manipulation', 'Telepathy', 'Shape-shifting', 'Elemental control', 'Healing power', 'Invisibility', 'Teleportation'],
+    body_description: ['Youthful features', 'Determined expression', 'Glowing eyes', 'Mystical aura', 'Marked with runes', 'Ethereal presence', 'Angular features', 'Round face', 'Expressive eyes', 'Graceful form'],
+    sexual_description: ['Not applicable', 'N/A', 'N/A', 'N/A'],
+    fetish: ['Not applicable'],
+    bodyFocus: ['expressive eyes', 'dynamic hands', 'character features', 'action pose', 'costume details', 'magical effects', 'facial expression', 'silhouette shape'],
+    sensation: ['magical energy', 'motion feeling', 'emotional resonance', 'dramatic tension', 'joyful energy', 'mysterious presence', 'peaceful calm', 'adventurous spirit'],
+    // Creative Brief fields (Step 1)
+    sceneDescription: [],
+    mainSubject: ['Character hero', 'Creature/Monster', 'Object magical', 'Environment fantasy', 'Group ensemble', 'Abstract concept', 'Creature companion', 'Mystical artifact'],
+    storyElements: ['Adventure quest', 'Character growth', 'Magical discovery', 'Friendship bond', 'Heroic sacrifice', 'Villain defeat', 'Secret revealed', 'Transformation power', 'Comedy moment', 'Emotional scene', 'Action battle', 'Mystery puzzle', 'Love connection', 'Betrayal shock', 'Victory celebration'],
+    inspirationNotes: [],
+    // Advanced Technical (Step 13)
+    advancedTechnical: ['Hand-drawn animation', '3D CGI render', 'Stop-motion puppet', 'Motion capture data', 'Rotoscope animation', 'Particle effects', 'Cloth simulation', 'Hair simulation', 'Lighting render', 'Ambient occlusion', 'Subsurface scattering', 'Volumetric lighting', 'Ray tracing render', 'Shader complexity', 'Texture detail', 'Rig detail', 'Blend shape controls'],
+    cinematicNotes: [],
+    // References & Inspiration (Step 16)
+    references: ['Studio Ghibli film', 'Pixar movie', 'Disney classic', 'DreamWorks style', 'Anime franchise', 'Comic book series', 'Video game cinematic', 'Storybook illustration', 'Art nouveau style', 'Manga aesthetic', 'CGI blockbuster', 'Stop-motion feature', 'Traditional animation', 'Rotoscope style', 'Anime-influenced', 'Western animation', 'Eastern animation', 'Indie animation', 'Experimental animation', 'Educational animation'],
+    inspirationStyle: ['Whimsical playful', 'Heroic epic', 'Dark mysterious', 'Soft dreamy', 'Bright energetic', 'Muted artistic', 'Detailed hyper', 'Minimalist simple', 'Geometric clean', 'Organic flowing', 'Realistic grounded', 'Stylized exaggerated', 'Surreal fantastic', 'Horror eerie', 'Comedy slapstick'],
+    visualReference: [],
+    // Time/Season/Era (Step 17)
+    timeOfDay: ['Early morning', 'Sunrise', 'Morning', 'Late morning', 'Midday', 'Early afternoon', 'Late afternoon', 'Golden hour', 'Sunset', 'Blue hour', 'Dusk', 'Early night', 'Deep night', 'Midnight', 'Pre-dawn'],
+    season: ['Spring', 'Summer', 'Autumn', 'Winter', 'Eternal spring', 'Eternal winter', 'Magical season', 'Mixed seasons'],
+    era: ['Fantasy timeless', 'Medieval fantasy', 'Steampunk adventure', 'Cyberpunk future', 'Historical period', 'Modern present', 'Post-apocalyptic', 'Magical realm', 'Outer space', 'Underground world', 'Underwater kingdom', 'Sky cities', 'Lost civilization', 'Alternate dimension', 'Dream world'],
+    culturalContext: ['Western fantasy', 'Eastern mythology', 'African inspired', 'Asian fusion', 'Nordic mystical', 'Mediterranean culture', 'Indigenous culture', 'Urban modern', 'Rural traditional', 'Imaginary world'],
+    // VFX & Effects (Step 18)
+    specialEffects: ['Particle system', 'Sparkle effect', 'Glow aura', 'Light burst', 'Smoke cloud', 'Fire animation', 'Water splash', 'Lightning bolt', 'Portal effect', 'Teleport shimmer', 'Magic circle', 'Dust storm', 'Explosion effect', 'Impact hit', 'Trail effect', 'Bloom glow', 'Screen shake', 'Transition wipe', 'Dissolve fade', 'Glitch effect'],
+    practicalElements: ['Animation rig', 'Motion capture', 'Keyframe animation', 'Procedural animation', 'Inverse kinematics', 'Forward kinematics', 'Blend shapes', 'Bone deformation', 'Muscle simulation', 'Dynamic physics'],
+    vfxNotes: [],
+    // Character Development (Step 19)
+    characterDevelopment: ['Hero arc', 'Villain motivation', 'Sidekick loyalty', 'Character quirk', 'Personality trait', 'Skill/power mastery', 'Relationship growth', 'Conflict resolution', 'Inner transformation', 'External change'],
+    emotionalArc: ['Hopeful beginning', 'Doubt midpoint', 'Determination peak', 'Sacrifice climax', 'Joy resolution', 'Sad farewell', 'Triumphant end', 'Bittersweet close'],
+    subtext: ['Hidden power', 'Secret identity', 'Unspoken love', 'Inner doubt', 'True purpose', 'Dark past', 'Light future', 'Redemption chance'],
+    // Pacing & Timing (Step 20)
+    pacing: ['Slow thoughtful', 'Steady consistent', 'Brisk energetic', 'Frantic exciting', 'Variable mixed', 'Climactic intense', 'Resolution calm'],
+    timing: ['Extended moment', 'Quick action', 'Perfect beat', 'Held pause', 'Overlapped action', 'Punchy rhythm', 'Smooth flow'],
+    rhythmNotes: [],
+    // Final Touches (Step 21)
+    finalTouches: ['Animation polish', 'Effects finalize', 'Color grading done', 'Sound effects placed', 'Music score added', 'Dialogue clean', 'Render quality high', 'Composition balanced', 'Pacing perfect', 'Emotional impact strong'],
+    customDetails: [],
   },
   nsfw: {
     genre: ['Boudoir', 'Art nude', 'Sensual portrait', 'Glam kink', 'Intimate scene', 'Erotic fantasy', 'Romantic encounter', 'Playful tease', 'Passionate moment', 'Tender embrace', 'Sultry editorial', 'Pin-up vintage', 'Soft erotic noir', 'Provocative fashion', 'Lingerie shoot', 'BDSM scene', 'Tantric pose', 'Fantasy roleplay', 'Steamy encounter', 'Seductive gaze', 'Nude art', 'Body worship', 'Sensual dance', 'Intimate touch', 'Erotic dream', 'Provocative tease', 'Romantic nude', 'Kinky fashion', 'Sultry noir', 'Playful nude'],
@@ -368,6 +633,38 @@ const DEFAULT_OPTION_SETS: OptionSets = {
     fetish: ['bondage play', 'dominance submission', 'roleplay fantasy', 'sensory deprivation', 'impact play', 'temperature play', 'wax play', 'ice play', 'feather torture', 'tickling game', 'breath play', 'choking light', 'hair pulling', 'biting marks', 'scratching nails', 'spanking red', 'flogging rhythm', 'caning stripes', 'paddling firm', 'whipping sting', 'electro play', 'vibration tease', 'anal exploration', 'oral worship', 'foot fetish', 'latex fetish', 'leather fetish', 'rubber fetish', 'nylon fetish', 'silk fetish', 'fur fetish', 'feather fetish', 'food play', 'chocolate smeared', 'whipped cream', 'honey drizzled', 'fruit teasing', 'wine spilled', 'oil massage', 'milk bath'],
     bodyFocus: ['breasts heaving', 'nipples erect', 'waist curved', 'hips swaying', 'buttocks firm', 'thighs toned', 'calves flexed', 'feet arched', 'toes curled', 'hands gripping', 'fingers digging', 'lips parted', 'tongue teasing', 'eyes locked', 'hair tousled', 'neck exposed', 'shoulders tense', 'back arched', 'stomach taut', 'pubic area', 'inner thighs', 'armpits sensitive', 'ears whispered to', 'eyebrows raised', 'cheeks flushed', 'nose nuzzled', 'chin lifted', 'collarbone kissed', 'ribs visible', 'navel pierced', 'hips grinding', 'knees weak', 'ankles bound', 'wrists restrained', 'palms open', 'fingertips tracing', 'knuckles white', 'elbows bent', 'forearms flexed', 'biceps bulging'],
     sensation: ['warm skin contact', 'cool air breeze', 'soft fabric caress', 'rough texture rub', 'wet tongue lick', 'hot breath exhale', 'cold ice melt', 'sharp teeth nip', 'gentle finger trace', 'firm hand grip', 'light feather tickle', 'heavy weight press', 'slippery oil glide', 'sticky honey pull', 'vibrating toy buzz', 'pulsing rhythm', 'throbbing heat', 'tingling electricity', 'stinging impact', 'soothing massage', 'arousing tease', 'climaxing wave', 'afterglow warmth', 'sensitive touch', 'erogenous zone', 'pleasure point', 'pain pleasure mix', 'sensory overload', 'deprivation heighten', 'blindfold darkness', 'earplug silence', 'nose clip scent', 'taste deprivation', 'touch isolation', 'sound muffled', 'light blocked', 'temperature extreme', 'pressure intense', 'friction build', 'release sudden'],
+    // Creative Brief fields (Step 1)
+    sceneDescription: [],
+    mainSubject: ['Person/Partner', 'Couple intimate', 'Solo intimate', 'Group scene', 'Body focus', 'Object/Accessory', 'Imagination fantasy', 'Sensory element'],
+    storyElements: ['Seduction', 'Passion', 'Tenderness', 'Playfulness', 'Dominance', 'Submission', 'Exploration', 'Connection', 'Pleasure', 'Desire', 'Intimacy', 'Vulnerability', 'Power dynamic', 'Release', 'Satisfaction'],
+    inspirationNotes: [],
+    // Advanced Technical (Step 13)
+    advancedTechnical: ['Shallow DOF', 'Bokeh dreamy', 'Soft focus beauty', 'Skin smoothing', 'Color grading warm', 'Color grading cool', 'Grain subtle texture', 'Noise reduction', 'Bloom glow enhanced', 'Lens flare subtle', 'Vignette darkening', 'Soft diffusion filter', 'Gloss highlights', 'Matte finish', 'Skin tone perfect', 'Blemish reduction', 'Eye brightening', 'Lip enhancement', 'Natural look', 'Artistic look'],
+    cinematicNotes: [],
+    // References & Inspiration (Step 16)
+    references: ['Boudoir photography', 'Art nude tradition', 'Fashion editorial', 'Pin-up style', 'Erotic film', 'Romantic cinema', 'Jazz age', 'Vintage aesthetic', 'Contemporary sensual', 'Fine art nudity', 'Classical painting', 'Renaissance art', 'Modern artistic', 'Instagram aesthetic', 'Magazine spread', 'Luxury branding', 'Fashion photography', 'Beauty editorial', 'Music video style', 'Soft erotica'],
+    inspirationStyle: ['Soft romantic', 'Bold confident', 'Tender intimate', 'Playful teasing', 'Sultry mysterious', 'Artistic tasteful', 'Luxurious decadent', 'Natural organic', 'Artistic abstract', 'Dramatic cinematic', 'Bright energetic', 'Dark moody', 'Ethereal dreamy', 'Elegant refined', 'Raw authentic'],
+    visualReference: [],
+    // Time/Season/Era (Step 17)
+    timeOfDay: ['Early morning', 'Sunrise glow', 'Morning light', 'Late morning', 'Midday', 'Early afternoon', 'Late afternoon', 'Golden hour', 'Sunset', 'Blue hour', 'Dusk', 'Early night', 'Deep night', 'Midnight', 'Pre-dawn'],
+    season: ['Spring renewal', 'Summer heat', 'Autumn warmth', 'Winter intimacy', 'No season', 'Timeless eternal'],
+    era: ['Modern contemporary', 'Retro vintage', 'Victorian era', 'Art Deco', 'Timeless classic', 'Futuristic fantasy', 'Historical period', 'Romantic era', 'Jazz age', 'Contemporary luxury'],
+    culturalContext: ['Western romance', 'Sensual tradition', 'Artistic community', 'Luxury lifestyle', 'Bohemian spirit', 'Modern fashion', 'Classic elegance', 'Urban contemporary', 'Natural authenticity', 'Spiritual sacred'],
+    // VFX & Effects (Step 18)
+    specialEffects: ['Bloom glow', 'Soft focus', 'Lens flare', 'Light leak', 'Vignette soft', 'Diffusion haze', 'Color shift', 'Saturation boost', 'Desaturation selective', 'Monochrome tint', 'Sepia tone', 'Skin smoothing', 'Shine removal', 'Glow enhancement', 'Sparkle effect', 'Particle shimmer', 'Motion blur artistic', 'Shallow DOF art', 'Film grain', 'Digital artifacts'],
+    practicalElements: ['Soft lighting', 'Diffusion silk', 'Reflector bounce', 'Colored gels', 'Practical lamps', 'Candle light', 'Fabric drapes', 'Mirror reflection', 'Window light', 'Sheer curtains', 'Silk sheets', 'Soft props', 'Flower petals', 'Oil/lotion sheen', 'Moisture/sweat', 'Steam effect'],
+    vfxNotes: [],
+    // Character Development (Step 19)
+    characterDevelopment: ['Confidence', 'Vulnerability', 'Desire shown', 'Comfort expressed', 'Pleasure visible', 'Surrender moment', 'Power dynamic', 'Connection building', 'Trust evident', 'Passion escalating'],
+    emotionalArc: ['Anticipation start', 'Building arousal', 'Climactic moment', 'Satisfaction end', 'Tender aftermath', 'Vulnerable transition', 'Joyful connection', 'Intimate closure'],
+    subtext: ['Hidden desire', 'True connection', 'Power play', 'Emotional release', 'Physical pleasure', 'Spiritual bond', 'Raw authenticity', 'Safe exploration'],
+    // Pacing & Timing (Step 20)
+    pacing: ['Slow sensual', 'Steady building', 'Passionate fast', 'Varied rhythm', 'Teasing staccato', 'Flowing smooth', 'Accelerating climax', 'Gentle resolution'],
+    timing: ['Extended moment', 'Quick transition', 'Perfect beat', 'Lingering pause', 'Overlapped action', 'Rhythmic sync', 'Music tied close'],
+    rhythmNotes: [],
+    // Final Touches (Step 21)
+    finalTouches: ['Color grading perfect', 'Skin tones beautiful', 'Mood established', 'Audio intimate', 'Pacing satisfying', 'Emotion authentic', 'Artistry evident', 'Tastefully done', 'Consent respected', 'Pleasure centered'],
+    customDetails: [],
     // Movement presets
     //TODO: Customize these for NSFW context that show only when NSFW is Selected
     movementSubjectType: ['Person', 'Object', 'Animal', 'Fantasy Creature', 'Mythical Being', 'Robot', 'Alien', 'Doll', 'Puppet', 'Statue', 'Toy', 'Inanimate Object', 'Partner', 'Lover', 'Body', 'Limb', 'Gaze', 'Touch', 'Pose', 'Silhouette', 'Shadow', 'Reflection', 'Caress', 'Embrace', 'Whisper', 'Breath', 'Pulse', 'Heat', 'Desire', 'Intimacy', 'Seduction', 'Temptation', 'Allure', 'Passion', 'Tenderness', 'Boldness', 'Shyness', 'Playfulness', 'Teasing', 'Urgency', 'Deliberation', 'Hesitation', 'Confidence', 'Nervousness', 'Quietude', 'Carefulness', 'Casualness', 'Gracefulness', 'Awkwardness'],
@@ -376,9 +673,62 @@ const DEFAULT_OPTION_SETS: OptionSets = {
     movementPace: ['slow', 'steady', 'brisk', 'hurried', 'hesitant', 'deliberate', 'leisurely', 'quick', 'urgent', 'casual', 'measured', 'fluid', 'jerky', 'graceful', 'awkward', 'smooth', 'stiff', 'lively', 'sluggish', 'energetic', 'teasingly slow', 'urgently', 'playfully', 'seductively', 'provocatively', 'intimately', 'passionately', 'tenderly', 'boldly', 'shyly', 'confidently', 'nervously', 'quietly', 'carefully', 'casually', 'gracefully', 'awkwardly', 'dramatically', 'subtly', 'intensely', 'lazily', 'energetically', 'thoughtfully', 'curiously', 'determinedly', 'aimlessly', 'smoothly', 'abruptly', 'gradually', 'suddenly', 'rhythmically', 'erratically', 'fluidly', 'staccato'],
     movementManner: ['confidently', 'nervously', 'quietly', 'carefully', 'casually', 'gracefully', 'awkwardly', 'sensually', 'playfully', 'boldly', 'shyly', 'eagerly', 'reluctantly', 'smoothly', 'hesitantly', 'deliberately', 'quickly', 'slowly', 'lightly', 'heavily', 'softly', 'firmly', 'gently', 'abruptly', 'fluidly', 'stiffly', 'lively', 'sluggishly', 'seductively', 'provocatively', 'intimately', 'passionately', 'tenderly', 'boldly', 'shyly', 'playfully', 'teasingly', 'urgently', 'deliberately', 'hesitantly', 'briskly', 'hurriedly', 'steadily', 'slowly', 'dramatically', 'subtly', 'intensely', 'lazily', 'energetically', 'thoughtfully', 'curiously', 'determinedly', 'aimlessly', 'smoothly', 'abruptly', 'gradually', 'suddenly', 'rhythmically', 'erratically', 'fluidly', 'staccato'],
   },
+  photography: {
+    genre: ['Portrait', 'Environmental portrait', 'Product shot', 'Fashion editorial', 'Landscape', 'Architectural', 'Street photography', 'Macro/Detail', 'Still life', 'Food styling', 'Beauty close-up', 'Headshot', 'Lifestyle', 'Documentary style', 'Event coverage', 'Travel', 'Nature', 'Wildlife', 'Underwater', 'Aerial', 'Long exposure', 'High-speed action', 'Astrophotography', 'Pet photography', 'Flat lay', 'Minimal', 'Fine art', 'Conceptual', 'Surreal', 'Vintage', 'Film noir'],
+    shot: ['Wide establishing', 'Medium shot', 'Close-up', 'Extreme close-up', 'Portrait', 'Half-body', 'Full-body', 'Group shot', 'Detail shot', 'Environmental', 'Overhead flat lay', 'Low angle', 'High angle', 'Profile', 'Over-the-shoulder', 'Dutch tilt', 'Bird\'s eye view', 'Worm\'s eye view', 'Macro', 'Silhouette', 'Backlit', 'Reflected', 'Through frame', 'Shadow play', 'Symmetrical', 'Rule of thirds', 'Leading lines', 'Layered depth', 'Crop tight', 'Crop loose'],
+    role: ['Model', 'Professional', 'Artist', 'Athlete', 'Performer', 'Subject', 'Product', 'Landscape', 'Object', 'Creature', 'Child', 'Elderly', 'Couple', 'Family', 'Group', 'Nobody', 'Hands only', 'Silhouette', 'Reflection', 'Shadow'],
+    hairColor: ['black', 'dark brown', 'brown', 'auburn', 'red', 'blonde', 'platinum blonde', 'silver', 'white', 'gray', 'natural', 'styled'],
+    eyeColor: ['brown', 'hazel', 'green', 'blue', 'gray', 'amber', 'natural', 'closed'],
+    bodyDescriptor: ['tall', 'short', 'slender', 'athletic build', 'muscular build', 'curvy build', 'petite', 'plus-size', 'average', 'proportional'],
+    lighting: ['Natural window light', 'Golden hour', 'Blue hour', 'Overcast soft', 'Studio softbox', 'Studio umbrella', 'Reflector fill', 'Ring light', 'Split light', 'Rim light', 'Backlit', 'Side light', 'Hard sunlight', 'Harsh shadows', 'Soft diffuse', 'Beauty dish', 'Octabox', 'Godox', 'Neon glow', 'Practical lights', 'LED panel', 'Strobe flash', 'Off-camera flash', 'Flash fill', 'Bounce fill', 'Snoot spotlight'],
+    environment: ['Studio cyclorama', 'Brick wall', 'White backdrop', 'Black backdrop', 'Textured wall', 'Natural outdoor', 'Urban street', 'Forest', 'Beach', 'Mountains', 'Desert', 'City skyline', 'Park', 'Garden', 'Interior home', 'Office', 'Factory', 'Abandoned building', 'Water', 'Snow', 'Field', 'Library', 'Museum', 'Gallery', 'Architecture', 'Mirror', 'Window'],
+    wardrobe: ['Tailored suit', 'Casual dress', 'Business attire', 'Sportswear', 'Formal gown', 'Denim & tee', 'Minimalist monochrome', 'Colorful', 'Textured fabric', 'Silk', 'Cotton', 'Leather', 'Knitwear', 'Accessories focus', 'Jewelry', 'Hat', 'Scarf', 'Sunglasses', 'Watch', 'Shoes featured', 'Hands only', 'Partial costume'],
+    pose: ['Standing', 'Sitting', 'Lying down', 'Kneeling', 'Leaning', 'Arms at side', 'Arms crossed', 'Hand on hip', 'Hands clasped', 'Looking at camera', 'Looking away', 'Profile view', 'Over-shoulder', 'Dynamic movement', 'Candid moment', 'Relaxed', 'Formal', 'Hands in pockets', 'Hand through hair', 'Laughing', 'Smiling', 'Neutral expression', 'Head tilted', 'Chin down', 'Looking up'],
+    cameraSettings: ['f/1.4 shallow depth', 'f/1.8 shallow depth', 'f/2.8 shallow depth', 'f/4 moderate depth', 'f/5.6 moderate depth', 'f/8 deep focus', 'f/11 deep focus', 'f/16 sharp throughout', 'ISO 100 clean', 'ISO 400 clean', 'ISO 1600 acceptable', 'ISO 3200 grainy', '1/1000 shutter', '1/500 shutter', '1/125 shutter', '1/60 shutter', '1/30 shutter', '1 second exposure', 'long exposure', 'burst mode', 'RAW format', 'JPEG format'],
+    lens: ['35mm prime', '50mm prime', '85mm prime', '100mm macro', '24mm wide', '16mm ultra-wide', '135mm telephoto', '200mm telephoto', '50mm f/1.4', '85mm f/1.8', '100mm f/2.8 macro', '24-70mm zoom', '18-55mm kit lens', '70-300mm zoom', 'fisheye lens', 'tilt-shift lens', 'soft focus lens', 'macro lens'],
+    colorGrade: ['Warm filmic', 'Cool tones', 'Vibrant colors', 'Muted pastels', 'Black & white', 'Monochrome', 'Sepia', 'High contrast', 'Low contrast', 'High saturation', 'Desaturated', 'Split tone', 'Color pop', 'Vintage look', 'Modern clean', 'Cinematic', 'Natural', 'Contrasty', 'Flat', 'Moody', 'Bright airy', 'Dark moody', 'Warm golden', 'Cool blue', 'Faded film'],
+    aperture: ['f/0.95 ultra shallow', 'f/1.2 very shallow', 'f/1.4 shallow', 'f/1.8 shallow', 'f/2 moderate', 'f/2.8 moderate', 'f/4 balanced', 'f/5.6 balanced', 'f/8 deep', 'f/11 deep', 'f/16 very deep', 'f/22 maximum'],
+    shutterSpeed: ['1/4000 fast', '1/2000 fast', '1/1000 fast', '1/500 moderate', '1/250 moderate', '1/125 moderate', '1/60 moderate', '1/30 slow', '1/15 slow', '1/8 slow', '1 second', '2 seconds', 'bulb mode'],
+    iso: ['100 clean', '200 clean', '400 clean', '800 acceptable', '1600 acceptable', '3200 grainy', '6400 very grainy', 'auto ISO', 'low light boost'],
+    whiteBalance: ['Daylight 5500K', 'Cloudy 6500K', 'Tungsten 3200K', 'Fluorescent 4000K', 'Flash 5500K', 'Candle warm', 'Cool blue', 'Warm orange', 'Auto WB', 'Custom WB', 'Kelvin dial'],
+    composition: ['Rule of thirds', 'Center framed', 'Golden ratio', 'Leading lines', 'Symmetrical', 'Asymmetrical', 'Negative space', 'Layered depth', 'Framing within frame', 'Foreground interest', 'Shallow depth', 'Deep focus', 'Tight crop', 'Wide composition', 'Diagonal lines', 'Curved lines', 'Vertical emphasis', 'Horizontal emphasis'],
+    weather: ['Clear sky', 'Blue sky', 'Cloudy soft', 'Overcast', 'Golden hour warm', 'Sunset orange', 'Sunrise pink', 'Storm dramatic', 'Rain glossy', 'Snow white', 'Fog misty', 'Frost cold', 'Dew dewy', 'Wind blown', 'Sunny bright', 'Shadowy', 'Backlit', 'Misty morning'],
+    lightQuality: ['Hard direct sunlight', 'Soft diffused light', 'Golden warm', 'Blue cool', 'Mixed color temp', 'Volumetric rays', 'Rim lit', 'Silhouette backlit', 'Even exposure', 'High contrast shadows', 'Low contrast flat', 'Specular highlights', 'Diffuse reflection'],
+    depthOfField: ['Extreme shallow', 'Shallow bokeh', 'Moderate depth', 'Deep throughout', 'Tack sharp', 'Creative blur', 'Macro magnification', 'Infinity focus'],
+    postProcessing: ['RAW editing', 'Lightroom preset', 'Capture One', 'Photoshop edit', 'Dodge and burn', 'Clarity boost', 'Contrast enhance', 'Vibrance adjust', 'Saturation control', 'Tone curve', 'Shadow lift', 'Highlight recover', 'Grain reduction', 'Sharpening boost', 'Blur background', 'Remove blemish', 'Crop adjust'],
+    style: ['Documentary', 'Fine art', 'Commercial', 'Editorial', 'Fine portrait', 'Environmental', 'Minimalist', 'Maximalist', 'Vintage aesthetic', 'Modern clean', 'Painterly', 'Graphic', 'Ethereal', 'Gritty', 'Polished', 'Raw', 'Stylized', 'Realistic', 'Dreamy', 'Cinematic'],
+    mood: ['Calm serene', 'Energetic vibrant', 'Melancholic moody', 'Joyful bright', 'Romantic dreamy', 'Dramatic intense', 'Peaceful quiet', 'Playful fun', 'Professional serious', 'Intimate close', 'Powerful strong', 'Vulnerable tender', 'Elegant graceful', 'Rustic natural', 'Luxurious opulent'],
+    texture: ['Smooth polished', 'Textured rough', 'Weathered aged', 'Clean pristine', 'Worn vintage', 'Metallic shiny', 'Matte flat', 'Glossy reflective', 'Soft silky', 'Grainy film', 'Organic natural', 'Geometric pattern'],
+    subject: ['Single person', 'Multiple people', 'Couple', 'Family group', 'Still life object', 'Product item', 'Landscape scene', 'Architecture detail', 'Nature element', 'Abstract concept', 'Hands detail', 'Face close-up', 'Body parts', 'Food styled', 'Animal', 'Mixed composition'],
+    purpose: ['Portfolio piece', 'Commercial client', 'Stock photography', 'Social media', 'Gallery display', 'Album cover', 'Book illustration', 'Web design', 'Print advertising', 'Catalog photo', 'Documentary evidence', 'Personal project'],
+    sceneDescription: [],
+    mainSubject: ['Person', 'People', 'Object', 'Landscape', 'Still life', 'Architecture', 'Nature', 'Animal', 'Food', 'Hands', 'Details', 'Abstract', 'Reflection', 'Shadow'],
+    storyElements: ['Emotion', 'Motion', 'Texture', 'Color', 'Light play', 'Contrast', 'Composition', 'Depth', 'Scale', 'Perspective', 'Pattern', 'Simplicity', 'Complexity'],
+    inspirationNotes: [],
+    advancedTechnical: ['f/1.4 ultra shallow', 'f/2.8 shallow bokeh', 'f/5.6 moderate', 'f/11 deep focus', 'Manual focus', 'Autofocus tracking', 'Zone focusing', 'Zone focus technique', 'Exposure bracketing', 'ND filter long exposure', 'Polarizing filter effect', 'Gradient ND filter', 'Macro lens extension tubes', 'Wide-angle distortion', 'Telephoto compression', 'Fisheye barrel distortion', 'Tilt-shift effect', 'Motion blur intentional', 'Panning technique', 'Focus stacking', 'High-speed flash sync', 'Slow sync flash', 'Flash exposure comp', 'Ambient light balance', 'Gel color correction', 'Diffusion filter', 'Soft focus filter', 'Infrared photography', 'Ultraviolet light', 'Black light effect'],
+    cinematicNotes: [],
+    references: ['Instagram reference', 'Pinterest aesthetic', 'Photographer style', 'Magazine editorial', 'Fine art photography', 'Commercial photography', 'Advertising campaign', 'Fashion photography', 'Documentary style', 'Street photography movement', 'Fine art tradition', 'Classical painting reference', 'Contemporary art', 'Photography book', 'Photo essay style', 'Museum exhibition', 'Historical photography', 'Vintage aesthetic', 'Film photography', 'Digital photography'],
+    inspirationStyle: ['Bold colorful', 'Minimalist monochrome', 'Maximalist busy', 'Fine art subtle', 'Commercial polished', 'Documentary raw', 'Vintage nostalgic', 'Modern clean', 'Painterly soft', 'Graphic sharp', 'Natural unretouched', 'Heavily edited', 'Ethereal dreamy', 'Gritty real', 'Cinematic moody', 'Bright airy', 'Dark moody', 'High contrast', 'Low contrast', 'Textural tactile'],
+    visualReference: [],
+    timeOfDay: ['Golden hour (5-6:30pm)', 'Blue hour (7-8pm)', 'Sunrise (6-8am)', 'Sunset (6-7pm)', 'Midday (12-2pm)', 'Morning light (8-10am)', 'Afternoon light (2-4pm)', 'Dusk (8-9pm)', 'Dawn (5-6am)', 'Night (after 9pm)', 'Twilight transition', 'Soft morning', 'Hard noon', 'Warm afternoon', 'Cool evening'],
+    season: ['Spring bloom', 'Summer heat', 'Autumn colors', 'Winter frost', 'Early spring', 'Late spring', 'Early summer', 'Late summer', 'Early autumn', 'Late autumn', 'Early winter', 'Late winter'],
+    era: ['Present day', 'Timeless', 'Retro 1970s', 'Retro 1980s', 'Retro 1990s', 'Vintage film', 'Classical art', 'Modern contemporary', 'Futuristic', 'Historical period', 'Art deco', 'Victorian era', 'Industrial age'],
+    culturalContext: ['Western', 'Eastern', 'Urban contemporary', 'Rural traditional', 'High fashion', 'Casual street', 'Professional corporate', 'Artistic bohemian', 'Luxury lifestyle', 'Minimalist simple', 'Maximalist ornate', 'Natural organic'],
+    specialEffects: ['None applied', 'Lens flare', 'Bloom glow', 'Light leak', 'Vignette', 'Chromatic aberration', 'Lens distortion', 'Motion blur', 'Double exposure', 'Intentional blur', 'Film grain', 'Dust particles', 'Bokeh balls', 'Light rays', 'Practical lighting effect', 'In-camera effect', 'Post-production effect'],
+    practicalElements: ['Studio setup', 'Lighting rig', 'Reflector', 'Diffuser', 'Backdrop', 'Props', 'Styling', 'Positioning', 'Posing direction', 'Composition aid', 'Rule of thirds grid', 'Focus assist', 'Depth preview'],
+    vfxNotes: [],
+    characterDevelopment: ['Personality shine', 'Genuine expression', 'Connection made', 'Story suggested', 'Emotion captured', 'Authenticity', 'Vulnerability', 'Strength shown', 'Elegance displayed', 'Confidence present'],
+    emotionalArc: ['Peaceful calm', 'Joyful bright', 'Serious contemplative', 'Playful fun', 'Romantic dreamy', 'Dramatic intense', 'Powerful strong', 'Vulnerable tender', 'Curious wondering', 'Confident assured'],
+    subtext: ['Elegance underneath', 'Strength hidden', 'Vulnerability showing', 'Confidence present', 'Story implied', 'Mood atmospheric', 'Texture tactile', 'Light plays', 'Composition intentional'],
+    pacing: ['Still moment', 'Frozen in time', 'Slow contemplation', 'Gentle flow', 'Dynamic movement', 'Action captured', 'Sequence series', 'Single decisive moment', 'Multiple layers', 'Layered depth'],
+    timing: ['Perfect focus', 'Precise exposure', 'Moment captured', 'Movement frozen', 'Peak action', 'Expression perfect', 'Lighting ideal', 'Composition precise'],
+    rhythmNotes: [],
+    finalTouches: ['Exposure perfect', 'Focus tack sharp', 'Color accurate', 'Composition strong', 'Light beautiful', 'Mood established', 'Emotion captured', 'Technical excellence', 'Artistic vision', 'Unique perspective', 'Portfolio ready', 'Print quality'],
+    customDetails: [],
+  },
 };
 
-const STEPS = Array.from({ length: 17 }, (_, i) => i + 1);
+const STEPS = Array.from({ length: 22 }, (_, i) => i + 1);
 
 const PRONOUNS = ['They', 'He', 'She', 'I', 'We'];
 const DIALOGUE_VERBS = ['says', 'whispers', 'murmurs', 'growls', 'shouts', 'laughs', 'breathes'];
@@ -396,10 +746,11 @@ const MULTI_SELECT_FIELDS = new Set<string>([
   'fetish',
   'bodyFocus',
   'sensation',
+  'storyElements',
 ]);
 
 const STEP_FIELDS: Record<number, string[]> = {
-  1: [],
+  1: ['sceneDescription', 'mainSubject', 'storyElements', 'inspirationNotes'],
   2: ['genre', 'shot', 'framingNotes'],
   3: ['role', 'wardrobe', 'hairColor', 'eyeColor', 'bodyDescriptor'],
   4: ['pose', 'mood'],
@@ -407,23 +758,151 @@ const STEP_FIELDS: Record<number, string[]> = {
   6: ['lighting', 'environment', 'environmentTexture', 'lightingIntensity'],
   7: ['cameraMove', 'lens', 'focusTarget'],
   8: ['colorGrade', 'weather'],
-  9: ['lightInteraction'],
- 10: ['sig1', 'sig2'],
- 11: ['sound', 'sfx'],
- 12: ['music', 'mix_notes'],
- 13: ['dialogue', 'pronoun'],
- 14: ['dialogue_verb'],
- 15: ['position', 'activity', 'accessory', 'explicit_abilities', 'body_description'],
- 16: ['fetish', 'bodyFocus', 'sensation', 'sexual_description'],
- 17: [],
+  9: ['lightInteraction', 'sig1', 'sig2'],
+ 10: ['sound', 'sfx'],
+ 11: ['music', 'mix_notes'],
+ 12: ['dialogue', 'pronoun', 'dialogue_verb'],
+ 13: ['advancedTechnical', 'cinematicNotes'],
+ 14: ['position', 'activity', 'accessory', 'explicit_abilities', 'body_description'],
+ 15: ['fetish', 'bodyFocus', 'sensation', 'sexual_description'],
+ 16: ['references', 'inspirationStyle', 'visualReference'],
+ 17: ['timeOfDay', 'season', 'era', 'culturalContext'],
+ 18: ['specialEffects', 'practicalElements', 'vfxNotes'],
+ 19: ['characterDevelopment', 'emotionalArc', 'subtext'],
+ 20: ['pacing', 'timing', 'rhythmNotes'],
+ 21: ['finalTouches', 'customDetails'],
+ 22: [],
+};
+
+// Helper: Get step number for a given field
+const getStepForField = (fieldName: string): number | null => {
+  for (const [stepNum, fields] of Object.entries(STEP_FIELDS)) {
+    if (fields.includes(fieldName)) {
+      return Number(stepNum);
+    }
+  }
+  return null;
 };
 
 const TEMPLATES: Record<ModeId, { name: string; fields: Record<string, string> }[]> = {
-  cinematic: [],
-  classic: [],
-  drone: [],
-  animation: [],
-  nsfw: [],
+  cinematic: [
+    {
+      name: 'Dramatic dialogue scene',
+      fields: {
+        genre_style: 'Drama',
+        shot_type: 'Close-up portrait',
+        subject_role: 'Protagonist',
+        environment: 'Interior room',
+        lighting: 'Dramatic side light',
+        colorGrade: 'Cool moody',
+        mood: 'Tense',
+      },
+    },
+    {
+      name: 'Action sequence',
+      fields: {
+        genre_style: 'Action thriller',
+        shot_type: 'Dynamic tracking',
+        subject_role: 'Hero',
+        pose_action: 'Running',
+        environment: 'Urban street',
+        lighting: 'Natural daylight',
+        colorGrade: 'Vibrant',
+        cameraMove: 'Push follow',
+      },
+    },
+  ],
+  classic: [
+    {
+      name: 'Portrait setup',
+      fields: {
+        genre: 'Portrait',
+        shot: 'Close-up',
+        role: 'Model',
+        wardrobe: 'Casual wear',
+        environment: 'Studio',
+        lighting: 'Soft window light',
+        palette: 'Warm neutral',
+    }
+    },
+  ],
+  drone: [
+    {
+      name: 'Landscape reveal',
+      fields: {
+        genre: 'Landscape',
+        shot: 'Wide aerial',
+        role: 'Mountain vista',
+        environment: 'Mountain terrain',
+        lighting: 'Golden hour',
+        weather: 'Clear',
+        cameraMove: 'Slow drift',
+      },
+    },
+  ],
+  animation: [
+    {
+      name: 'Character intro',
+      fields: {
+        genre_style: 'Fantasy',
+        shot_type: 'Hero shot',
+        environment: 'Magical realm',
+        lighting: 'Volumetric',
+        mood: 'Adventurous',
+      },
+    },
+  ],
+  photography: [
+    {
+      name: 'Studio portrait',
+      fields: {
+        genre: 'Portrait',
+        shot: 'Close-up headshot',
+        lighting: 'Studio softbox',
+        lightingIntensity: 'Soft',
+        environment: 'White background',
+        colorGrade: 'Clean neutral',
+        mood: 'Professional',
+      },
+    },
+    {
+      name: 'Product photography',
+      fields: {
+        genre: 'Product',
+        shot: 'Close-up detail',
+        lighting: 'Studio cyclorama',
+        lightingIntensity: 'Medium',
+        environment: 'White studio',
+        colorGrade: 'Bright clean',
+        mood: 'Commercial',
+      },
+    },
+    {
+      name: 'Landscape photography',
+      fields: {
+        genre: 'Landscape',
+        shot: 'Wide establishing',
+        lighting: 'Golden hour',
+        environment: 'Natural outdoor',
+        colorGrade: 'Warm film',
+        mood: 'Serene',
+      },
+    },
+  ],
+  nsfw: [
+    {
+      name: 'Intimate portrait',
+      fields: {
+        genre: 'Portrait',
+        shot: 'Close-up',
+        role: 'Model',
+        environment: 'Bedroom',
+        lighting: 'Soft warm light',
+        mood: 'Romantic',
+        position: 'Reclining',
+      },
+    },
+  ],
 };
 
 const detailLabelFor = (value: number) => (value < 35 ? 'Minimal' : value > 65 ? 'Rich' : 'Balanced');
@@ -464,6 +943,38 @@ type CinematicData = {
   explicit_abilities?: string;
   body_description?: string;
   sexual_description?: string;
+  // Step 1: Creative Brief
+  scene_description?: string;
+  main_subject?: string;
+  story_elements?: string;
+  inspiration_notes?: string;
+  // Step 13: Advanced Technical
+  advanced_technical?: string;
+  cinematic_notes?: string;
+  // Step 16: References & Inspiration
+  references?: string;
+  inspiration_style?: string;
+  visual_reference?: string;
+  // Step 17: Time, Season & Era
+  time_of_day?: string;
+  season?: string;
+  era?: string;
+  cultural_context?: string;
+  // Step 18: VFX & Effects
+  special_effects?: string;
+  practical_elements?: string;
+  vfx_notes?: string;
+  // Step 19: Character Development
+  character_development?: string;
+  emotional_arc?: string;
+  subtext?: string;
+  // Step 20: Pacing & Timing
+  pacing?: string;
+  timing?: string;
+  rhythm_notes?: string;
+  // Step 21: Final Touches
+  final_touches?: string;
+  custom_details?: string;
 };
 
 type ClassicData = {
@@ -488,11 +999,36 @@ type ClassicData = {
   avoid: string;
   framing_notes?: string;
   focus_target?: string;
+  // Extended fields for rich prompt building
+  scene_description?: string;
+  main_subject?: string;
+  story_elements?: string;
+  inspiration_notes?: string;
+  advanced_technical?: string;
+  cinematic_notes?: string;
+  references?: string;
+  inspiration_style?: string;
+  visual_reference?: string;
+  time_of_day?: string;
+  season?: string;
+  era?: string;
+  cultural_context?: string;
+  special_effects?: string;
+  practical_elements?: string;
+  vfx_notes?: string;
+  character_development?: string;
+  emotional_arc?: string;
+  subtext?: string;
+  pacing?: string;
+  timing?: string;
+  rhythm_notes?: string;
+  final_touches?: string;
+  custom_details?: string;
 };
 
 export default function WizardPage() {
   const [step, setStep] = useState(1);
-  const [previewOpen, setPreviewOpen] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [mode, setMode] = useState<ModeId>('cinematic');
   const [values, setValues] = useState<Record<string, Record<string, string>>>(
     { cinematic: {}, classic: {}, drone: {}, animation: {}, nsfw: {} }
@@ -523,7 +1059,7 @@ export default function WizardPage() {
   const [ollamaPullProgress, setOllamaPullProgress] = useState<string>('');
   const [nsfwEnabled, setNsfwEnabled] = useState(false);
   const [introStage, setIntroStage] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
-  const [introBase, setIntroBase] = useState<'film' | 'photo' | 'adult' | null>(null);
+  const [introBase, setIntroBase] = useState<'film' | 'photo' | 'photography' | 'adult' | null>(null);
   const [introCinematicFlavor, setIntroCinematicFlavor] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsMode, setSettingsMode] = useState<ModeId>('cinematic');
@@ -550,7 +1086,7 @@ export default function WizardPage() {
   const [chatModel, setChatModel] = useState('');
   const [historyViewModalOpen, setHistoryViewModalOpen] = useState(false);
   const [historyViewModalText, setHistoryViewModalText] = useState('');
-  const [chatSystemPrompt, setChatSystemPrompt] = useState('Focus on video prompts for the LTX Video model. Help users create detailed, cinematic prompts with proper shot descriptions, lighting, and audio elements. CRITICAL: When expanding or refining prompts, output ONLY the expanded prompt in a markdown code block (```prompt ... ```) unless the user explicitly asks for feedback or explanation. The markup should contain only the refined prompt text, nothing else.');
+  const [chatSystemPrompt, setChatSystemPrompt] = useState('');
   const [chatSystemPromptModalOpen, setChatSystemPromptModalOpen] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const didHydrateRef = useRef(false);
@@ -661,6 +1197,28 @@ export default function WizardPage() {
     }
   }, [chatMessages, chatSending]);
 
+  // Get mode-specific system prompt for chat context
+  const getModeSystemPrompt = (mode: ModeId): string => {
+    const basePrompt = 'When expanding or refining prompts, output ONLY the expanded prompt in a markdown code block (```prompt ... ```) unless the user explicitly asks for feedback or explanation.';
+    
+    switch (mode) {
+      case 'photography':
+        return `${basePrompt} Focus on professional photography prompts for Stable Diffusion and Flux Dev. Include technical camera settings (aperture, ISO, shutter speed), lighting setup, composition techniques, lens specifications, and color grading style. Use realistic photography language with technical precision. Perfect for portraits, products, landscapes, macro, and commercial photography.`;
+      case 'cinematic':
+        return `${basePrompt} Focus on cinematic video prompts for the LTX Video model. Create detailed prompts with specific shot descriptions, camera movements, lighting with technical accuracy, integrated audio elements, and character performances.`;
+      case 'drone':
+        return `${basePrompt} Focus on aerial and landscape video prompts for the LTX Video model. Emphasize panoramic composition, drone movements, landscape features, environmental storytelling, and atmospheric conditions.`;
+      case 'animation':
+        return `${basePrompt} Focus on animation prompts for the LTX Video model. Include stylization details, character animation qualities, exaggerated or stylized movements, and animation-specific visual language.`;
+      case 'classic':
+        return `${basePrompt} Focus on general, versatile prompts for the LTX Video model. Create balanced descriptions suitable for any scene type with cohesive visual direction.`;
+      case 'nsfw':
+        return `${basePrompt} Focus on adult-oriented content prompts. Use professional, descriptive language while maintaining the adult nature of the content.`;
+      default:
+        return basePrompt;
+    }
+  };
+
   const showToast = useCallback((message: string) => {
     setToast(message);
     if (toastTimeoutRef.current) {
@@ -688,26 +1246,31 @@ export default function WizardPage() {
 
   const stepTitle = useCallback((n: number) => {
     switch (n) {
-      case 1: return 'Let’s set you up';
-      case 2: return `Genre & ${captureWordTitle}`;
-      case 3: return mode === 'drone' ? 'Focus & surface detail' : 'Role & wardrobe';
-      case 4: return mode === 'drone' ? 'Motion & mood' : 'Pose & mood';
+      case 1: return 'Creative brief';
+      case 2: return 'Subject & framing';
+      case 3: return mode === 'drone' ? 'Focus & surface detail' : 'Character & styling';
+      case 4: return mode === 'drone' ? 'Motion & mood' : 'Pose & emotion';
       case 5: return 'Action beats';
       case 6: return 'Lighting & environment';
       case 7: return 'Camera & lens';
       case 8: return 'Grade & weather';
-      case 9: return 'Light interaction';
-      case 10: return mode === 'animation' ? 'Style signatures' : 'Signatures';
-      case 11: return 'Ambient & SFX';
-      case 12: return 'Music & mix';
-      case 13: return mode === 'drone' ? 'Optional narration' : 'Dialogue & speaker';
-      case 14: return 'Delivery';
-      case 15: return 'NSFW abilities & body';
-      case 16: return 'NSFW expression';
-      case 17: return 'Review & build';
+      case 9: return 'Light behavior & signatures';
+      case 10: return mode === 'drone' ? 'Ambient soundscape' : 'Ambient & SFX';
+      case 11: return 'Music & mix';
+      case 12: return mode === 'drone' ? 'Optional narration' : 'Dialogue & speaker';
+      case 13: return 'Technical & notes';
+      case 14: return mode === 'nsfw' ? 'Position & activity' : 'NSFW position';
+      case 15: return mode === 'nsfw' ? 'Body focus & sensation' : 'NSFW expression';
+      case 16: return 'References & inspiration';
+      case 17: return 'Time, season & era';
+      case 18: return 'VFX & practicals';
+      case 19: return 'Character development';
+      case 20: return 'Pacing & rhythm';
+      case 21: return 'Final polish';
+      case 22: return 'Review & build';
       default: return `Step ${n}`;
     }
-  }, [captureWordTitle, mode]);
+  }, [mode]);
 
   const summary = useMemo(() => ({ ...current, mode }), [current, mode]);
 
@@ -743,6 +1306,10 @@ export default function WizardPage() {
 
   const renderPickOrType = (field: string) => {
     const nsfwFields = ['position', 'activity', 'accessory', 'fetish', 'bodyFocus', 'sensation'];
+    // If hideNsfw is on and this is an NSFW field, don't render anything
+    if (uiPrefs.hideNsfw && nsfwFields.includes(field)) {
+      return null;
+    }
     const options = nsfwFields.includes(field) ? (optionSets['nsfw']?.[field] || []) : (selects[field] || []);
     return (
       <PickOrTypeField
@@ -819,10 +1386,23 @@ export default function WizardPage() {
       setNsfwEnabled(true);
       return;
     }
+    if (introBase === 'photography') {
+      setMode('photography');
+      return;
+    }
     // film/photo both map to cinematic/classic depending on flavor.
     if (introCinematicFlavor) setMode('cinematic');
     else setMode('classic');
   }, [introBase, introCinematicFlavor]);
+
+  useEffect(() => {
+    // If hideNsfw is enabled and user is in NSFW mode, switch to cinematic
+    if (uiPrefs.hideNsfw && mode === 'nsfw') {
+      setMode('cinematic');
+      setNsfwEnabled(false);
+      showToast('🔒 NSFW hidden — switched to Cinematic mode');
+    }
+  }, [uiPrefs.hideNsfw, mode, showToast]);
 
   const prompt = useMemo(() => {
     // Apply tone to mood field if not explicitly set
@@ -872,11 +1452,19 @@ export default function WizardPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Don't interfere with typing in input fields or textareas
+      const target = e.target as HTMLElement;
+      const isInput = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+      
       const ctrl = e.ctrlKey || e.metaKey;
-      if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowRight' && !isInput) {
         e.preventDefault();
         handleNext();
-      } else if (e.key === 'ArrowLeft') {
+      } else if (e.key === 'ArrowLeft' && !isInput) {
         e.preventDefault();
         handleBack();
       } else if (ctrl && e.key.toLowerCase() === 'r') {
@@ -923,7 +1511,16 @@ export default function WizardPage() {
       const next = { ...prev };
       const bucket = { ...next[mode] };
       for (const f of fields) {
-        const picked = randomPick(optionsForField(f));
+        let options = optionsForField(f);
+        // For NSFW mode, only use NSFW-specific options for NSFW-only fields
+        if (mode === 'nsfw' && nsfwEnabled) {
+          const nsfwOnlyFields = ['position', 'activity', 'accessory', 'fetish', 'bodyFocus', 'sensation'];
+          if (nsfwOnlyFields.includes(f)) {
+            // Filter to only use NSFW mode's options for these fields
+            options = (optionSets[mode]?.[f] || []);
+          }
+        }
+        const picked = randomPick(options);
         if (picked) bucket[f] = picked;
       }
       next[mode] = bucket;
@@ -1150,11 +1747,11 @@ export default function WizardPage() {
 
   const expandWithOllama = async () => {
     if (!ollamaSettings.enabled) {
-      showToast('Ollama is not enabled. Enable it in Tools → Settings.');
+      showToast('🔧 Enable Ollama in Settings first');
       return;
     }
     if (!prompt) {
-      showToast('No prompt to expand');
+      showToast('⚠️ Fill in some fields to expand');
       return;
     }
 
@@ -1166,6 +1763,7 @@ export default function WizardPage() {
     setOllamaError(null);
     setOllamaResult('');
     setOllamaSidePanelOpen(true);
+    showToast('✨ Expanding with AI...');
 
     try {
       const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
@@ -1223,7 +1821,7 @@ export default function WizardPage() {
         }
       }
 
-      showToast('Prompt expanded successfully');
+      showToast('✅ Prompt expanded successfully');
       
       // Unload model after completion
       setTimeout(() => {
@@ -1232,7 +1830,7 @@ export default function WizardPage() {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to connect to Ollama';
       setOllamaError(errorMsg);
-      showToast(`Ollama error: ${errorMsg}`);
+      showToast(`❌ Error: ${errorMsg}`);
     } finally {
       setOllamaExpanding(false);
     }
@@ -1241,13 +1839,13 @@ export default function WizardPage() {
   const applyOllamaResult = () => {
     if (!ollamaResult) return;
     navigator.clipboard.writeText(ollamaResult);
-    showToast('Expanded prompt copied to clipboard');
+    showToast('📋 Expanded prompt copied');
   };
 
   const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
     if (!ollamaSettings.enabled) {
-      showToast('Ollama is not enabled. Enable it in Settings.');
+      showToast('🔧 Enable Ollama in Settings first');
       return;
     }
 
@@ -1265,6 +1863,12 @@ export default function WizardPage() {
     setChatSending(true);
 
     try {
+      // Determine context based on current mode
+      let modeContext = LTX_CONTEXT;
+      if (mode === 'photography') {
+        modeContext = PHOTOGRAPHY_CONTEXT;
+      }
+
       const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1273,7 +1877,7 @@ export default function WizardPage() {
           messages: [
             {
               role: 'system',
-              content: `${NICOLE_BASE_SYSTEM_PROMPT}\n\n${LTX_CONTEXT}\n\nAdditional context:\n${chatSystemPrompt}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+              content: `${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
             },
             ...updatedMessages,
           ],
@@ -1667,221 +2271,63 @@ export default function WizardPage() {
 
   return (
     <main className="wizard-shell">
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand">
-            <div className="brand-title">LTXV Prompt Creator</div>
-          </div>
-          <div className="topbar-actions">
-            <div className="topbar-group">
-              <label className="step-selector" aria-label="Jump to step">
-                <span className="step-label">Step</span>
-                <select value={String(step)} onChange={(e) => setStep(Number(e.target.value))} aria-label="Jump to step">
-                  {STEPS.map((n) => (
-                    <option key={n} value={String(n)}>Step {n} — {stepTitle(n)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="step-selector" aria-label="Select mode">
-                <span className="step-label">Mode</span>
-                <select
-                  value={mode}
-                  onChange={(e) => {
-                    const next = e.target.value as ModeId;
-                    setMode(next);
-                    setSettingsMode(next);
-                  }}
-                  aria-label="Select mode"
-                >
-                  {MODES.map((m) => (
-                    <option key={m.id} value={m.id}>{m.title}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="topbar-group">
-              <button
-                className="icon-btn"
-                type="button"
-                title="Randomize this step"
-                onClick={randomizeStep}
-              >
-                🎲
-              </button>
-              <button
-                className={`icon-btn ${isStepLocked(step) ? 'locked' : ''}`}
-                type="button"
-                title={isStepLocked(step) ? "Unlock this step from randomization" : "Lock this step from randomization"}
-                onClick={() => toggleStepLock(step)}
-              >
-                {isStepLocked(step) ? '🔒' : '🔓'}
-              </button>
-              <button
-                className="icon-btn"
-                type="button"
-                title="Randomize all steps"
-                onClick={randomizeAll}
-              >
-                🔀
-              </button>
-              <button
-                className="icon-btn"
-                type="button"
-                title="Reset this step"
-                onClick={resetCurrentStep}
-              >
-                ↶
-              </button>
-              <button
-                className="icon-btn"
-                type="button"
-                title="Reset entire wizard"
-                onClick={resetWizard}
-              >
-                ⟲
-              </button>
-            </div>
-
-            <div className="topbar-group">
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => setPreviewOpen((v) => !v)}
-              >
-                {previewOpen ? '⊘ Hide Preview' : '✓ Show Preview'}
-              </button>
-              <button
-                className="icon-btn"
-                type="button"
-                aria-label="Open projects"
-                title="Projects"
-                onClick={() => setProjectsOpen(true)}
-              >
-                📁
-              </button>
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => setPresetCreatorOpen(true)}
-              >
-                Create Preset
-              </button>
-              <button
-                className="icon-btn"
-                type="button"
-                aria-label="Open settings"
-                title="Settings"
-                onClick={() => {
-                  setSettingsMode(mode);
-                  setSettingsField('genre');
-                  setSettingsOpen(true);
-                }}
-              >
-                ⚙️
-              </button>
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => setTemplatesOpen(true)}
-              >
-                Templates
-              </button>
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => setBatchOpen(true)}
-              >
-                Batch
-              </button>
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => setHistoryOpen(true)}
-              >
-                History
-              </button>
-            </div>
-
-            <div className="topbar-group">
-              <button
-                className="ghost"
-                type="button"
-                onClick={expandWithOllama}
-                disabled={ollamaExpanding}
-              >
-                {ollamaExpanding ? 'Expanding...' : 'Ollama Expand'}
-              </button>
-              <span className="ollama-model-indicator" aria-live="polite" title="Current Ollama model">
-                Model: {ollamaSettings.model}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <TopBar
+        step={step}
+        onStepChange={setStep}
+        mode={mode}
+        onModeChange={(next) => {
+          setMode(next);
+          setSettingsMode(next);
+        }}
+        uiPrefs={uiPrefs}
+        previewOpen={previewOpen}
+        onPreviewToggle={() => setPreviewOpen((v) => !v)}
+        nsfwEnabled={nsfwEnabled}
+        onNsfwToggle={() => setNsfwEnabled(!nsfwEnabled)}
+        isStepLocked={isStepLocked}
+        onToggleStepLock={toggleStepLock}
+        onRandomizeStep={randomizeStep}
+        onRandomizeAll={randomizeAll}
+        onResetStep={resetCurrentStep}
+        onResetWizard={resetWizard}
+        onOpenProjects={() => setProjectsOpen(true)}
+        onOpenSettings={() => {
+          setSettingsMode(mode);
+          setSettingsField('genre');
+          setSettingsOpen(true);
+        }}
+        onOpenPresetCreator={() => setPresetCreatorOpen(true)}
+        onOpenTemplates={() => setTemplatesOpen(true)}
+        onOpenBatch={() => setBatchOpen(true)}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onExpandWithOllama={expandWithOllama}
+        ollamaExpanding={ollamaExpanding}
+        ollamaSettings={ollamaSettings}
+        steps={STEPS}
+        modes={MODES}
+        stepTitle={stepTitle}
+        onShowToast={showToast}
+      />
       <div className="topbar-spacer" aria-hidden="true" />
 
 
 
-      {projectsOpen && (
-        <div className="settings-overlay" onMouseDown={() => setProjectsOpen(false)}>
-          <div className="settings-panel projects-panel" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="settings-head">
-              <div>
-                <p className="eyebrow">Projects</p>
-                <h3 className="settings-title">Manage projects</h3>
-                <p className="hint">Save and load your work. Export/import JSON files.</p>
-              </div>
-              <button className="ghost" type="button" onClick={() => setProjectsOpen(false)}>Close</button>
-            </div>
-
-            <div className="projects-actions">
-              <div className="settings-add">
-                <input
-                  type="text"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="New project name"
-                  aria-label="New project name"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') createProject();
-                  }}
-                />
-                <button className="primary" type="button" onClick={createProject}>Create</button>
-              </div>
-              <button className="ghost" type="button" onClick={saveCurrentProject}>
-                Save Current
-              </button>
-              <button className="ghost" type="button" onClick={importProject}>
-                Import JSON
-              </button>
-            </div>
-
-            <div className="projects-list">
-              {projects.length === 0 && (
-                <div className="empty-state">
-                  <p>No projects yet. Create one to save your work.</p>
-                </div>
-              )}
-              {projects.map((proj) => (
-                <div key={proj.id} className={`project-card ${currentProjectId === proj.id ? 'active' : ''}`}>
-                  <div className="project-info">
-                    <div className="project-name">{proj.name}</div>
-                    <div className="project-meta">
-                      {labelForMode(proj.mode)} • {new Date(proj.updatedAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="project-actions">
-                    <button className="ghost" type="button" onClick={() => loadProject(proj)}>Load</button>
-                    <button className="ghost" type="button" onClick={() => exportProject(proj)}>Export</button>
-                    <button className="ghost" type="button" onClick={() => deleteProject(proj.id)}>Delete</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Projects Modal Component */}
+      <ProjectsModal
+        projectsOpen={projectsOpen}
+        setProjectsOpen={setProjectsOpen}
+        projects={projects}
+        currentProjectId={currentProjectId}
+        newProjectName={newProjectName}
+        setNewProjectName={setNewProjectName}
+        labelForMode={labelForMode}
+        createProject={createProject}
+        saveCurrentProject={saveCurrentProject}
+        importProject={importProject}
+        loadProject={loadProject}
+        exportProject={exportProject}
+        deleteProject={deleteProject}
+      />
 
       {presetCreatorOpen && (
         <div className="settings-overlay" onMouseDown={() => setPresetCreatorOpen(false)}>
@@ -1939,475 +2385,56 @@ export default function WizardPage() {
         </div>
       )}
 
-      {settingsOpen && (
-        <div className="settings-overlay" onMouseDown={() => setSettingsOpen(false)}>
-          <div className="settings-panel" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="settings-head">
-              <div>
-                <p className="eyebrow">Settings</p>
-                <h3 className="settings-title">Preset options</h3>
-                <p className="hint">Add, remove, and customize dropdown options. Saved locally.</p>
-              </div>
-              <button className="ghost" type="button" onClick={() => setSettingsOpen(false)}>
-                Close
-              </button>
-            </div>
-
-            <div className="settings-summary-row" aria-label="Current settings overview">
-              <div className="summary-chip">Capture word: {uiPrefs.captureWord}</div>
-              <div className="summary-chip">Format: {uiPrefs.promptFormat === 'ltx2' ? 'LTX-2' : 'Paragraph'}</div>
-              <div className="summary-chip">Detail: {detailLabelFor(visualEmphasis)}</div>
-              <div className="summary-chip">Audio: {audioLabelFor(audioEmphasis)}</div>
-              <div className="settings-summary-actions">
-                <button className="ghost tiny" type="button" onClick={resetUiPrefs}>Reset UI</button>
-                <button className="ghost tiny" type="button" onClick={resetModeToDefaults}>Reset mode list</button>
-              </div>
-            </div>
-
-            <div className="settings-tabs">
-              {MODES.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={`tab ${settingsMode === m.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setSettingsMode(m.id as ModeId);
-                    setSettingsField('genre');
-                  }}
-                >
-                  {labelForMode(m.id)}
-                </button>
-              ))}
-            </div>
-
-            <div className="settings-body">
-              <div className="settings-left">
-                <div className="settings-experience">
-                  <div className="settings-experience-head">
-                    <p className="eyebrow">Experience</p>
-                    <p className="hint">Tune the vibe.</p>
-                  </div>
-
-                  <label className="field">
-                    <span>Use the word</span>
-                    <select
-                      value={uiPrefs.captureWord}
-                      onChange={(e) =>
-                        setUiPrefs((p) => ({ ...p, captureWord: e.target.value as CaptureWord }))
-                      }
-                      aria-label="Capture wording preference"
-                    >
-                      <option value="shot">Shot</option>
-                      <option value="video">Video</option>
-                      <option value="clip">Clip</option>
-                      <option value="frame">Frame</option>
-                    </select>
-                  </label>
-
-                  <div className="settings-experience-row">
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={uiPrefs.autoCopyOnReview}
-                        onChange={(e) => setUiPrefs((p) => ({ ...p, autoCopyOnReview: e.target.checked }))}
-                        aria-label="Auto-copy prompt on review"
-                      />
-                      <span className="slider" />
-                    </label>
-                    <div>
-                      <div className="toggle-title">Auto-copy on Review</div>
-                      <div className="toggle-note">Copies the prompt when you reach Step 12.</div>
-                    </div>
-                  </div>
-
-                  <label className="field">
-                    <span>Prompt format</span>
-                    <select
-                      value={uiPrefs.promptFormat}
-                      onChange={(e) =>
-                        setUiPrefs((p) => ({ ...p, promptFormat: e.target.value as PromptFormat }))
-                      }
-                      aria-label="Prompt format"
-                    >
-                      <option value="ltx2">LTX-2 (Core Actions / Visual / Audio)</option>
-                      <option value="paragraph">Paragraph (legacy)</option>
-                    </select>
-                  </label>
-
-                  <div className="settings-experience-head">
-                    <p className="eyebrow">Live editing</p>
-                    <p className="hint">Dial richness and auto-fill gaps.</p>
-                  </div>
-
-                  <label className="field">
-                    <span>Detail level</span>
-                    <select
-                      value={uiPrefs.detailLevel}
-                      onChange={(e) =>
-                        setUiPrefs((p) => ({ ...p, detailLevel: e.target.value as DetailLevel }))
-                      }
-                      aria-label="Detail level for prompts"
-                    >
-                      <option value="minimal">Minimal</option>
-                      <option value="balanced">Balanced</option>
-                      <option value="rich">Rich</option>
-                    </select>
-                  </label>
-
-                  <div className="settings-experience-row">
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={uiPrefs.autoFillAudio}
-                        onChange={(e) => setUiPrefs((p) => ({ ...p, autoFillAudio: e.target.checked }))}
-                        aria-label="Auto-fill audio cues"
-                      />
-                      <span className="slider" />
-                    </label>
-                    <div>
-                      <div className="toggle-title">Auto-fill audio</div>
-                      <div className="toggle-note">Backfills ambience/SFX/music when blank.</div>
-                    </div>
-                  </div>
-
-                  <div className="settings-experience-row">
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={uiPrefs.autoFillCamera}
-                        onChange={(e) => setUiPrefs((p) => ({ ...p, autoFillCamera: e.target.checked }))}
-                        aria-label="Auto-fill camera movement"
-                      />
-                      <span className="slider" />
-                    </label>
-                    <div>
-                      <div className="toggle-title">Auto camera moves</div>
-                      <div className="toggle-note">Keeps motion language present if empty.</div>
-                    </div>
-                  </div>
-
-                  <label className="field">
-                    <span>Preview font scale ({uiPrefs.previewFontScale.toFixed(2)}x)</span>
-                    <input
-                      type="range"
-                      min="0.9"
-                      max="1.2"
-                      step="0.05"
-                      value={uiPrefs.previewFontScale}
-                      onChange={(e) => setUiPrefs((p) => ({ ...p, previewFontScale: parseFloat(e.target.value) }))}
-                      aria-label="Preview font scale"
-                    />
-                  </label>
-
-                  <div className="settings-divider" />
-
-                  <div className="settings-experience-head">
-                    <p className="eyebrow">Quick tone</p>
-                    <p className="hint">Preset moods for the current scene.</p>
-                  </div>
-
-                  <div className="quick-tone-buttons">
-                    {(['melancholic', 'balanced', 'energetic', 'dramatic'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        className={`tone-btn ${editorTone === t ? 'active' : ''}`}
-                        onClick={() => setEditorTone(t)}
-                        title={`Set mood to ${t}`}
-                      >
-                        {t.charAt(0).toUpperCase() + t.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="field">
-                    <span>Visual detail ({visualEmphasis}%)</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={visualEmphasis}
-                      onChange={(e) => setVisualEmphasis(Number(e.target.value))}
-                      aria-label="Visual detail emphasis"
-                    />
-                    <div className="range-hint">
-                      {visualEmphasis < 35 ? 'Minimal' : visualEmphasis > 65 ? 'Rich' : 'Balanced'}
-                    </div>
-                  </label>
-
-                  <label className="field">
-                    <span>Audio inclusion ({audioEmphasis}%)</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={audioEmphasis}
-                      onChange={(e) => setAudioEmphasis(Number(e.target.value))}
-                      aria-label="Audio detail emphasis"
-                    />
-                    <div className="range-hint">
-                      {audioEmphasis < 40 ? 'Sparse' : audioEmphasis > 60 ? 'Detailed' : 'Balanced'}
-                    </div>
-                  </label>
-                </div>
-
-                <div className="settings-divider" />
-
-                <div className="settings-experience-head">
-                  <p className="eyebrow">Ollama Integration</p>
-                  <p className="hint">Expand prompts using local AI.</p>
-                </div>
-
-                <div className="settings-experience-row">
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={ollamaSettings.enabled}
-                      onChange={(e) => {
-                        const enabled = e.target.checked;
-                        setOllamaSettings((p) => ({ ...p, enabled }));
-                        if (enabled) {
-                          fetchOllamaModels();
-                        }
-                      }}
-                      aria-label="Enable Ollama integration"
-                    />
-                    <span className="slider" />
-                  </label>
-                  <div>
-                    <div className="toggle-title">Enable Ollama</div>
-                    <div className="toggle-note">Use Ollama to expand and enhance prompts.</div>
-                  </div>
-                </div>
-
-                {ollamaSettings.enabled && (
-                  <>
-                    <label className="field">
-                      <span>API Endpoint</span>
-                      <input
-                        type="text"
-                        value={ollamaSettings.apiEndpoint}
-                        onChange={(e) => setOllamaSettings((p) => ({ ...p, apiEndpoint: e.target.value }))}
-                        onBlur={fetchOllamaModels}
-                        placeholder="http://localhost:11434"
-                        aria-label="Ollama API endpoint"
-                      />
-                    </label>
-
-                    <label className="field">
-                      <div className="field-header-with-action">
-                        <span>Model</span>
-                        <button
-                          type="button"
-                          className="ghost small"
-                          onClick={fetchOllamaModels}
-                          disabled={ollamaLoadingModels}
-                          title="Refresh available models"
-                        >
-                          {ollamaLoadingModels ? '⟳ Loading...' : '🔄 Refresh'}
-                        </button>
-                      </div>
-                      {ollamaAvailableModels.length > 0 ? (
-                        <select
-                          value={ollamaSettings.model}
-                          onChange={(e) => setOllamaSettings((p) => ({ ...p, model: e.target.value }))}
-                          aria-label="Select Ollama model"
-                        >
-                          {ollamaAvailableModels.map((modelName) => (
-                            <option key={modelName} value={modelName}>
-                              {modelName}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={ollamaSettings.model}
-                          onChange={(e) => setOllamaSettings((p) => ({ ...p, model: e.target.value }))}
-                          placeholder="llama2"
-                          aria-label="Ollama model name"
-                        />
-                      )}
-                    </label>
-
-                    <label className="field">
-                      <span>Temperature ({ollamaSettings.temperature.toFixed(1)})</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.1"
-                        value={ollamaSettings.temperature}
-                        onChange={(e) => setOllamaSettings((p) => ({ ...p, temperature: parseFloat(e.target.value) }))}
-                        aria-label="Ollama temperature"
-                      />
-                      <div className="range-hint">
-                        {ollamaSettings.temperature < 0.5 ? 'Conservative' : ollamaSettings.temperature > 1.5 ? 'Creative' : 'Balanced'}
-                      </div>
-                    </label>
-
-                    <label className="field">
-                      <div className="field-header-with-action">
-                        <span>System Instructions</span>
-                        <button
-                          type="button"
-                          className="ghost small"
-                          onClick={() => setOllamaSettings((p) => ({ ...p, systemInstructions: DEFAULT_OLLAMA_SETTINGS.systemInstructions }))}
-                          title="Reset to default Creative Assistant spec"
-                        >
-                          Reset to default
-                        </button>
-                      </div>
-                      <textarea
-                        value={ollamaSettings.systemInstructions}
-                        onChange={(e) => setOllamaSettings((p) => ({ ...p, systemInstructions: e.target.value }))}
-                        rows={6}
-                        placeholder="Guidelines for how Ollama should expand your prompts. Use the default for the Creative Assistant spec."
-                        aria-label="Ollama system instructions"
-                      />
-                      <div className="settings-actions">
-                        <button
-                          type="button"
-                          className="ghost small"
-                          onClick={() => setOllamaSettings((p) => ({
-                            ...p,
-                            apiEndpoint: DEFAULT_OLLAMA_SETTINGS.apiEndpoint,
-                            model: DEFAULT_OLLAMA_SETTINGS.model,
-                            temperature: DEFAULT_OLLAMA_SETTINGS.temperature,
-                            systemInstructions: DEFAULT_OLLAMA_SETTINGS.systemInstructions,
-                          }))}
-                          title="Restore Ollama endpoint, model, temperature, and instructions to defaults"
-                        >
-                          Restore Ollama Defaults
-                        </button>
-                      </div>
-                    </label>
-                  </>
-                )}
-
-                <div className="settings-divider" />
-
-                <label className="field">
-                  <span>Which list do you want to edit?</span>
-                  <select
-                    value={settingsField}
-                    onChange={(e) => setSettingsField(e.target.value)}
-                    aria-label="Select which preset list to edit"
-                  >
-                    {settingsFields.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <div className="settings-add">
-                  <input
-                    type="text"
-                    value={newOption}
-                    onChange={(e) => setNewOption(e.target.value)}
-                    placeholder="Add a new option (press Enter)"
-                    aria-label="Add a new preset option"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') addOneOption();
-                    }}
-                  />
-                  <button className="primary" type="button" onClick={addOneOption}>
-                    Add
-                  </button>
-                </div>
-
-                <details className="settings-bulk">
-                  <summary>Bulk add (one per line)</summary>
-                  <textarea
-                    value={bulkOptions}
-                    onChange={(e) => setBulkOptions(e.target.value)}
-                    rows={6}
-                    aria-label="Bulk add preset options"
-                    placeholder={'One option per line\nExample:\nSoft mist\nNeon rain\nDreamy bokeh'}
-                  />
-                  <div className="settings-bulk-actions">
-                    <button className="ghost" type="button" onClick={addBulkOptions}>
-                      Add lines
-                    </button>
-                    <button className="ghost" type="button" onClick={() => setBulkOptions('')}>
-                      Clear
-                    </button>
-                  </div>
-                </details>
-
-                {suggestedFields.length > 0 && (
-                  <div className="suggested-fields">
-                    <p className="eyebrow">Next to fill</p>
-                    <div className="suggested-list">
-                      {suggestedFields.map((field) => (
-                        <div key={field} className="suggested-item">
-                          <span className="field-label">{field}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="settings-divider" />
-
-                <div className="settings-actions">
-                  <button className="ghost" type="button" onClick={exportAllAppData} title="Export all app data to JSON">
-                    Backup All
-                  </button>
-                  <button className="ghost" type="button" onClick={importAllAppData} title="Restore from a backup JSON file">
-                    Restore Backup
-                  </button>
-                </div>
-
-                <div className="settings-actions">
-                  <button className="ghost" type="button" onClick={resetModeToDefaults}>
-                    Reset this mode to defaults
-                  </button>
-                </div>
-              </div>
-
-              <div className="settings-right">
-                <div className="settings-list">
-                  <div className="settings-add">
-                    <input
-                      type="text"
-                      value={settingsFilter}
-                      onChange={(e) => setSettingsFilter(e.target.value)}
-                      placeholder="Filter options…"
-                      aria-label="Filter preset options"
-                    />
-                    <button className="ghost" type="button" onClick={() => setSettingsFilter('')}>Clear</button>
-                  </div>
-                  {(optionSets[settingsMode]?.[settingsField] || []).filter((v) => {
-                    const q = (settingsFilter || '').trim().toLowerCase();
-                    if (!q) return true;
-                    return v.toLowerCase().includes(q);
-                  }).map((v) => (
-                    <div key={v} className={`chip-row ${recentlyAdded === v ? 'just-added' : ''}`}>
-                      <button
-                        className={`fav-star ${isFavorite(settingsMode, settingsField, v) ? 'active' : ''}`}
-                        type="button"
-                        onClick={() => toggleFavorite(settingsMode, settingsField, v)}
-                        aria-label={`${isFavorite(settingsMode, settingsField, v) ? 'Unfavorite' : 'Favorite'} ${v}`}
-                      >
-                        ★
-                      </button>
-                      <div className="chip">{v}</div>
-                      <button className="ghost" type="button" onClick={() => removeOption(v)}>
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settingsMode={settingsMode}
+        onSettingsModeChange={(mode) => {
+          setSettingsMode(mode);
+          setSettingsField('genre');
+        }}
+        settingsField={settingsField}
+        onSettingsFieldChange={setSettingsField}
+        uiPrefs={uiPrefs}
+        onUiPrefsChange={setUiPrefs}
+        ollamaSettings={ollamaSettings}
+        onOllamaSettingsChange={setOllamaSettings}
+        optionSets={optionSets}
+        onOptionSetsChange={setOptionSets}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
+        settingsFilter={settingsFilter}
+        onSettingsFilterChange={setSettingsFilter}
+        newOption={newOption}
+        onNewOptionChange={setNewOption}
+        bulkOptions={bulkOptions}
+        onBulkOptionsChange={setBulkOptions}
+        recentlyAdded={recentlyAdded}
+        onRemoveOption={removeOption}
+        onResetModeToDefaults={resetModeToDefaults}
+        onResetUiPrefs={resetUiPrefs}
+        onAddOneOption={addOneOption}
+        onAddBulkOptions={addBulkOptions}
+        onFetchOllamaModels={fetchOllamaModels}
+        ollamaAvailableModels={ollamaAvailableModels}
+        ollamaLoadingModels={ollamaLoadingModels}
+        suggestedFields={suggestedFields}
+        onExportAllAppData={exportAllAppData}
+        onImportAllAppData={importAllAppData}
+        editorTone={editorTone}
+        onEditorToneChange={setEditorTone}
+        visualEmphasis={visualEmphasis}
+        onVisualEmphasisChange={setVisualEmphasis}
+        audioEmphasis={audioEmphasis}
+        onAudioEmphasisChange={setAudioEmphasis}
+        modes={MODES}
+        isFavorite={isFavorite}
+        detailLabelFor={detailLabelFor}
+        audioLabelFor={audioLabelFor}
+        labelForMode={labelForMode}
+        DEFAULT_OPTION_SETS={DEFAULT_OPTION_SETS}
+        DEFAULT_OLLAMA_SETTINGS={DEFAULT_OLLAMA_SETTINGS}
+      />
 
       {/* Templates Modal */}
       {templatesOpen && (
@@ -2564,7 +2591,7 @@ export default function WizardPage() {
                 <p className="hint">No prompts yet. Generate some to see them here!</p>
               ) : (
                 <>
-                  <div className="history-controls">
+                  <div className="history-controls history-controls-full">
                     <input
                       type="text"
                       placeholder="Search history…"
@@ -2587,8 +2614,6 @@ export default function WizardPage() {
                       </button>
                     )}
                   </div>
-                  
-                  <div className="history-list">
                     {promptHistory
                       .filter((item) => 
                         historyFilter === '' ||
@@ -2608,7 +2633,7 @@ export default function WizardPage() {
                               </div>
                               <span className="history-time">{timeStr}</span>
                             </div>
-                            <p className="history-preview">{item.text.substring(0, 200)}{item.text.length > 200 ? '…' : ''}</p>
+                            <p className="history-preview">{item.text}</p>
                             <div className="history-item-actions">
                               <button
                                 className="ghost small"
@@ -2668,7 +2693,6 @@ export default function WizardPage() {
                           </div>
                         );
                       })}
-                  </div>
                   
                   {promptHistory.filter((item) => 
                     historyFilter === '' ||
@@ -2685,98 +2709,25 @@ export default function WizardPage() {
       )}
 
       {/* Ollama Expansion Side Panel */}
-      {ollamaSidePanelOpen && (
-        <div className="ollama-sidepanel">
-          <div className="ollama-sidepanel-header">
-            <div>
-              <h3>Ollama Expansion</h3>
-              <p className="hint">{ollamaExpanding ? 'Streaming...' : 'Completed'}</p>
-            </div>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => {
-                setOllamaSidePanelOpen(false);
-                setOllamaResult('');
-                setOllamaError(null);
-              }}
-              title="Close panel"
-            >
-              ✕
-            </button>
-          </div>
-
-          {ollamaError ? (
-            <div className="ollama-sidepanel-body">
-              <div className="error-box">
-                <p><strong>Error:</strong> {ollamaError}</p>
-                <p className="hint">Make sure Ollama is running at {ollamaSettings.apiEndpoint}</p>
-                {!ollamaAvailableModels.includes(ollamaSettings.model) && (
-                  <div className="settings-actions">
-                    <button
-                      className="primary"
-                      type="button"
-                      onClick={() => pullOllamaModelAndRetry(ollamaSettings.model)}
-                      disabled={ollamaPulling}
-                      title="Pull model and retry"
-                    >
-                      {ollamaPulling ? 'Pulling…' : 'Pull Model & Retry'}
-                    </button>
-                    {ollamaPullProgress && (
-                      <p className="hint pull-progress-hint">{ollamaPullProgress}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="ollama-sidepanel-body">
-              <div className="ollama-comparison">
-                <div className="ollama-section">
-                  <div className="ollama-section-header">
-                    <span className="ollama-section-title">Original Prompt</span>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={() => {
-                        navigator.clipboard.writeText(ollamaOriginalPrompt);
-                        showToast('Original copied');
-                      }}
-                      title="Copy original"
-                    >
-                      📋
-                    </button>
-                  </div>
-                  <div className="ollama-prompt-box">
-                    {ollamaOriginalPrompt}
-                  </div>
-                </div>
-
-                <div className="ollama-section">
-                  <div className="ollama-section-header">
-                    <span className="ollama-section-title">
-                      Expanded Prompt
-                      {ollamaExpanding && <span className="ollama-streaming-indicator"> ●</span>}
-                    </span>
-                    <button
-                      type="button"
-                      className="ghost small"
-                      onClick={applyOllamaResult}
-                      disabled={!ollamaResult || ollamaExpanding}
-                      title="Copy expanded"
-                    >
-                      📋
-                    </button>
-                  </div>
-                  <div className="ollama-prompt-box ollama-expanded">
-                    {ollamaResult || (ollamaExpanding ? 'Generating...' : 'No result yet')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <OllamaSidePanel
+        isOpen={ollamaSidePanelOpen}
+        onClose={() => {
+          setOllamaSidePanelOpen(false);
+          setOllamaResult('');
+          setOllamaError(null);
+        }}
+        isExpanding={ollamaExpanding}
+        result={ollamaResult}
+        error={ollamaError}
+        originalPrompt={ollamaOriginalPrompt}
+        ollamaSettings={ollamaSettings}
+        availableModels={ollamaAvailableModels}
+        isPulling={ollamaPulling}
+        pullProgress={ollamaPullProgress}
+        onApplyResult={applyOllamaResult}
+        onPullModelAndRetry={pullOllamaModelAndRetry}
+        onShowToast={showToast}
+      />
 
       <div className="progress">
         <div
@@ -2885,18 +2836,33 @@ export default function WizardPage() {
 
               <button
                 type="button"
-                className={`mode-card ${introBase === 'adult' ? 'active' : ''}`}
+                className={`mode-card ${introBase === 'photography' ? 'active' : ''}`}
                 onClick={() => {
-                  setIntroBase('adult');
+                  setIntroBase('photography');
                   setIntroStage(2);
-                  setNsfwEnabled(true);
-                  setMode('nsfw');
                 }}
               >
-                <div className="mode-tag">18+</div>
-                <p className="mode-title">Adult / NSFW</p>
-                <p className="hint">Unlocks NSFW preset lists and optional fields.</p>
+                <div className="mode-tag">Still image</div>
+                <p className="mode-title">Photography</p>
+                <p className="hint">Professional photo mode for Stable Diffusion & Flux Dev.</p>
               </button>
+
+              {!uiPrefs.hideNsfw && (
+                <button
+                  type="button"
+                  className={`mode-card ${introBase === 'adult' ? 'active' : ''}`}
+                  onClick={() => {
+                    setIntroBase('adult');
+                    setIntroStage(2);
+                    setNsfwEnabled(true);
+                    setMode('nsfw');
+                  }}
+                >
+                  <div className="mode-tag">18+</div>
+                  <p className="mode-title">Adult / NSFW</p>
+                  <p className="hint">Unlocks NSFW preset lists and optional fields.</p>
+                </button>
+              )}
             </div>
           )}
 
@@ -3027,8 +2993,8 @@ export default function WizardPage() {
         <article className={`step ${step === 2 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 2</p>
-            <h2>{mode === 'drone' ? `Landscape & ${captureWordTitle}` : `Genre & ${captureWordTitle}`}</h2>
-            <p className="hint">{mode === 'drone' ? 'Environment-first aerial framing and location vibe.' : 'Set the story tone and camera framing.'}</p>
+            <h2>{mode === 'drone' ? 'Subject & vantage' : `Subject & ${captureWordTitle}`}</h2>
+            <p className="hint">{mode === 'drone' ? 'Lock the aerial subject, vantage, and composition anchor.' : 'Pick subject focus, framing, and intent for the prompt foundation.'}</p>
           </div>
           <div className="field-grid">
             {['genre', 'shot'].map((field) => (
@@ -3060,8 +3026,8 @@ export default function WizardPage() {
         <article className={`step ${step === 3 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 3</p>
-            <h2>{mode === 'drone' ? 'Focus & surface detail' : 'Role & wardrobe'}</h2>
-            <p className="hint">{mode === 'drone' ? 'Keep it non-person: landmark, terrain, architecture, and surface cues.' : 'Define who the subject is and what they wear.'}</p>
+            <h2>{mode === 'drone' ? 'Focus & surface detail' : 'Character & styling'}</h2>
+            <p className="hint">{mode === 'drone' ? 'Keep it non-person: landmark, terrain, architecture, and surface cues.' : 'Define the subject, wardrobe, and key appearance cues.'}</p>
           </div>
           <div className="field-grid">
             {(mode === 'drone'
@@ -3095,8 +3061,8 @@ export default function WizardPage() {
         <article className={`step ${step === 4 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 4</p>
-            <h2>{mode === 'drone' ? 'Motion & mood' : 'Pose & mood'}</h2>
-            <p className="hint">{mode === 'drone' ? 'Describe camera/scene motion and the emotional tone.' : 'Capture stance and emotional tone.'}</p>
+            <h2>{mode === 'drone' ? 'Motion & mood' : 'Pose & emotion'}</h2>
+            <p className="hint">{mode === 'drone' ? 'Describe camera/scene motion and the emotional tone.' : 'Lock the pose and emotional read for the subject.'}</p>
           </div>
           <div className="field-grid">
             {['pose', 'mood'].map((field) => (
@@ -3313,33 +3279,22 @@ export default function WizardPage() {
         <article className={`step ${step === 9 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 9</p>
-            <h2>Light interaction</h2>
-            <p className="hint">How the light behaves on surfaces.</p>
+            <h2>Light behavior & signatures</h2>
+            <p className="hint">How the light behaves on surfaces plus your signature touches.</p>
           </div>
           <div className="field-grid">
-            {['lightInteraction'].map((field) => (
-              <label className="field" key={field}>
-                {renderLabel(labelForField(field), 'Light behavior on surfaces (wraps, rims, scatters). Adds texture realism and helps avoid flat lighting.', field)}
-                <PickOrTypeField
-                  ariaLabel={labelForField(field)}
-                  value={fieldValue(field)}
-                  placeholder={examplePlaceholder(selects[field] || [])}
-                  listId={listIdFor(field)}
-                  options={selects[field] || []}
-                  onChange={(v) => handleInput(field, v)}
-                />
-              </label>
-            ))}
-          </div>
-        </article>
+            <label className="field">
+              {renderLabel(labelForField('lightInteraction'), 'Light behavior on surfaces (wraps, rims, scatters). Adds texture realism and helps avoid flat lighting.', 'lightInteraction')}
+              <PickOrTypeField
+                ariaLabel={labelForField('lightInteraction')}
+                value={fieldValue('lightInteraction')}
+                placeholder={examplePlaceholder(selects['lightInteraction'] || [])}
+                listId={listIdFor('lightInteraction')}
+                options={selects['lightInteraction'] || []}
+                onChange={(v) => handleInput('lightInteraction', v)}
+              />
+            </label>
 
-        <article className={`step ${step === 10 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 10</p>
-            <h2>Signatures</h2>
-            <p className="hint">Add visual signature details.</p>
-          </div>
-          <div className="field-grid">
             {['sig1', 'sig2'].map((field) => (
               <label className="field" key={field}>
                 {renderLabel(labelForField(field), 'Small, repeatable motifs (e.g., lens bloom, grain). Use sparingly to brand the look without overpowering.', field)}
@@ -3356,10 +3311,10 @@ export default function WizardPage() {
           </div>
         </article>
 
-        <article className={`step ${step === 11 ? 'active' : ''}`}>
+        <article className={`step ${step === 10 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 11</p>
-            <h2>Ambient & SFX</h2>
+            <p className="eyebrow">Step 10</p>
+            <h2>{mode === 'drone' ? 'Ambient soundscape' : 'Ambient & SFX'}</h2>
             <p className="hint">Lay down the audio bed.</p>
           </div>
           <div className="field-grid">
@@ -3375,9 +3330,9 @@ export default function WizardPage() {
           </div>
         </article>
 
-        <article className={`step ${step === 12 ? 'active' : ''}`}>
+        <article className={`step ${step === 11 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 12</p>
+            <p className="eyebrow">Step 11</p>
             <h2>Music & mix</h2>
             <p className="hint">Optional score plus any mixing notes.</p>
           </div>
@@ -3407,67 +3362,84 @@ export default function WizardPage() {
           </div>
         </article>
 
-        <article className={`step ${step === 13 ? 'active' : ''}`}>
+        <article className={`step ${step === 12 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 13</p>
-            <h2>Dialogue & speaker</h2>
-            <p className="hint">Optional line plus who says it.</p>
+            <p className="eyebrow">Step 12</p>
+            <h2>{mode === 'drone' ? 'Optional narration' : 'Dialogue & speaker'}</h2>
+            <p className="hint">{mode === 'drone' ? 'Add narration if needed; otherwise leave blank for a clean ambient bed.' : 'Optional dialogue line plus who says it and how.'}</p>
           </div>
           <div className="field-grid">
             <label className="field">
-              {renderLabel('Dialogue line', 'Short line of speech; blank for a silent beat.', 'dialogue')}
-              <input
-                type="text"
+              {renderLabel('Dialogue line', 'Short line or narration. Leave blank to omit dialogue.', 'dialogue')}
+              <textarea
                 value={current.dialogue || ''}
                 onChange={(e) => handleInput('dialogue', e.target.value)}
-                placeholder={'e.g., "Don\'t blink."'}
+                rows={3}
+                placeholder={'e.g., "We move on my mark," she whispers.'}
                 aria-label="Dialogue line"
               />
             </label>
 
             <label className="field">
-              {renderLabel('Speaker', 'Pronoun/voice label (They/He/She/I/We). Used to format the dialogue line.', 'pronoun')}
-              <PickOrTypeField
-                ariaLabel="Speaker pronoun"
+              {renderLabel('Speaker / pronoun', 'Who delivers the line; sets pronoun context.', 'pronoun')}
+              <select
                 value={current.pronoun || ''}
-                placeholder="Pick or type…"
-                listId={`list-${mode}-pronoun`}
-                options={['They', 'He', 'She', 'I', 'We']}
-                onChange={(v) => handleInput('pronoun', v)}
-              />
+                onChange={(e) => handleInput('pronoun', e.target.value)}
+                aria-label="Speaker or pronoun"
+              >
+                <option value="">Select speaker</option>
+                {PRONOUNS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </label>
-          </div>
-          <div className="inline-alert">
-            <div className="dot" />
-            <p>Leave dialogue empty for a silent, cinematic beat.</p>
+
+            <label className="field">
+              {renderLabel('Delivery verb', 'Delivery style for the line (says, whispers, growls).', 'dialogue_verb')}
+              <select
+                value={current.dialogue_verb || ''}
+                onChange={(e) => handleInput('dialogue_verb', e.target.value)}
+                aria-label="Delivery verb"
+              >
+                <option value="">Select delivery</option>
+                {DIALOGUE_VERBS.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
           </div>
         </article>
 
-        <article className={`step ${step === 14 ? 'active' : ''}`}>
+        <article className={`step ${step === 13 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 14</p>
-            <h2>Delivery</h2>
-            <p className="hint">How the line is delivered.</p>
+            <p className="eyebrow">Step 13</p>
+            <h2>Advanced technical</h2>
+            <p className="hint">Technical specs and cinematic notes for enhanced quality.</p>
           </div>
           <div className="field-grid">
             <label className="field">
-              {renderLabel('Delivery', 'Verb shaping tone/pacing (e.g., whispers, shouts, murmurs).', 'dialogue_verb')}
-              <PickOrTypeField
-                ariaLabel="Dialogue verb"
-                value={current.dialogue_verb || ''}
-                placeholder="Pick or type…"
-                listId={`list-${mode}-dialogue_verb`}
-                options={['says', 'whispers', 'murmurs', 'growls', 'shouts', 'laughs', 'breathes']}
-                onChange={(v) => handleInput('dialogue_verb', v)}
+              {renderLabel('Advanced technical', 'Frame rates, DOF, focus techniques, color science.', 'advancedTechnical')}
+              {renderPickOrType('advancedTechnical')}
+            </label>
+            <label className="field">
+              {renderLabel('Cinematic notes', 'Additional technical or creative notes.', 'cinematicNotes')}
+              <input
+                type="text"
+                value={current.cinematicNotes || ''}
+                onChange={(e) => handleInput('cinematicNotes', e.target.value)}
+                placeholder="e.g., use practical lighting, avoid CGI feel"
+                aria-label="Cinematic notes"
               />
             </label>
           </div>
         </article>
 
-        <article className={`step ${step === 15 ? 'active' : ''}`}>
+        {!uiPrefs.hideNsfw && (
+          <>
+            <article className={`step ${step === 14 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 15</p>
-            <h2>NSFW abilities & body</h2>
+            <p className="eyebrow">Step 14</p>
+            <h2>{mode === 'nsfw' ? 'Position & activity' : 'NSFW position'}</h2>
             <p className="hint">Adult-only context. Ignored unless NSFW is enabled.</p>
           </div>
           <div className="field-grid">
@@ -3512,10 +3484,10 @@ export default function WizardPage() {
           )}
         </article>
 
-        <article className={`step ${step === 16 ? 'active' : ''}`}>
+        <article className={`step ${step === 15 ? 'active' : ''}`}>
           <div className="step-header">
-            <p className="eyebrow">Step 16</p>
-            <h2>NSFW expression</h2>
+            <p className="eyebrow">Step 15</p>
+            <h2>{mode === 'nsfw' ? 'Body focus & sensation' : 'NSFW expression'}</h2>
             <p className="hint">Optional intimacy details; gated by NSFW toggle.</p>
           </div>
           <div className="field-grid">
@@ -3549,10 +3521,168 @@ export default function WizardPage() {
             </div>
           )}
         </article>
+          </>
+        )}
+
+        <article className={`step ${step === 16 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 16</p>
+            <h2>References & inspiration</h2>
+            <p className="hint">Film, photography, and artistic references that inform your style.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('References', 'Film references, photography styles, director aesthetics.', 'references')}
+              {renderPickOrType('references')}
+            </label>
+            <label className="field">
+              {renderLabel('Inspiration style', 'Overall creative direction and mood.', 'inspirationStyle')}
+              {renderPickOrType('inspirationStyle')}
+            </label>
+            <label className="field">
+              {renderLabel('Visual reference', 'Specific visual references or examples.', 'visualReference')}
+              <input
+                type="text"
+                value={current.visualReference || ''}
+                onChange={(e) => handleInput('visualReference', e.target.value)}
+                placeholder="e.g., Blade Runner opening, Ansel Adams landscape"
+                aria-label="Visual reference"
+              />
+            </label>
+          </div>
+        </article>
 
         <article className={`step ${step === 17 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 17</p>
+            <h2>Time, season & era</h2>
+            <p className="hint">Temporal and cultural context for authenticity and atmosphere.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('Time of day', 'Specific time for light quality and mood.', 'timeOfDay')}
+              {renderPickOrType('timeOfDay')}
+            </label>
+            <label className="field">
+              {renderLabel('Season', 'Seasonal atmosphere and environmental cues.', 'season')}
+              {renderPickOrType('season')}
+            </label>
+            <label className="field">
+              {renderLabel('Era', 'Historical period or time setting.', 'era')}
+              {renderPickOrType('era')}
+            </label>
+            <label className="field">
+              {renderLabel('Cultural context', 'Cultural or regional aesthetic.', 'culturalContext')}
+              {renderPickOrType('culturalContext')}
+            </label>
+          </div>
+        </article>
+
+        <article className={`step ${step === 18 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 18</p>
+            <h2>VFX & effects</h2>
+            <p className="hint">Special effects, practical elements, and post-production notes.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('Special effects', 'VFX, particle systems, and digital effects.', 'specialEffects')}
+              {renderPickOrType('specialEffects')}
+            </label>
+            <label className="field">
+              {renderLabel('Practical elements', 'On-set practical effects and rigging.', 'practicalElements')}
+              {renderPickOrType('practicalElements')}
+            </label>
+            <label className="field">
+              {renderLabel('VFX notes', 'Additional effects notes and requirements.', 'vfxNotes')}
+              <input
+                type="text"
+                value={current.vfxNotes || ''}
+                onChange={(e) => handleInput('vfxNotes', e.target.value)}
+                placeholder="e.g., subtle augmentation, avoid over-processing"
+                aria-label="VFX notes"
+              />
+            </label>
+          </div>
+        </article>
+
+        <article className={`step ${step === 19 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 19</p>
+            <h2>Character development</h2>
+            <p className="hint">Character arcs, emotional beats, and subtext.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('Character development', 'Character growth, traits, and transformation.', 'characterDevelopment')}
+              {renderPickOrType('characterDevelopment')}
+            </label>
+            <label className="field">
+              {renderLabel('Emotional arc', 'Emotional journey from start to finish.', 'emotionalArc')}
+              {renderPickOrType('emotionalArc')}
+            </label>
+            <label className="field">
+              {renderLabel('Subtext', 'Underlying themes and unspoken elements.', 'subtext')}
+              {renderPickOrType('subtext')}
+            </label>
+          </div>
+        </article>
+
+        <article className={`step ${step === 20 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 20</p>
+            <h2>Pacing & timing</h2>
+            <p className="hint">Rhythm, tempo, and beat timing for your scene.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('Pacing', 'Overall rhythm and speed of the scene.', 'pacing')}
+              {renderPickOrType('pacing')}
+            </label>
+            <label className="field">
+              {renderLabel('Timing', 'Beat timing and transitions.', 'timing')}
+              {renderPickOrType('timing')}
+            </label>
+            <label className="field">
+              {renderLabel('Rhythm notes', 'Additional pacing notes and considerations.', 'rhythmNotes')}
+              <input
+                type="text"
+                value={current.rhythmNotes || ''}
+                onChange={(e) => handleInput('rhythmNotes', e.target.value)}
+                placeholder="e.g., build tension slowly, quick climax"
+                aria-label="Rhythm notes"
+              />
+            </label>
+          </div>
+        </article>
+
+        <article className={`step ${step === 21 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 21</p>
+            <h2>Final touches</h2>
+            <p className="hint">Polish and final creative details.</p>
+          </div>
+          <div className="field-grid">
+            <label className="field">
+              {renderLabel('Final touches', 'Final polish elements and quality markers.', 'finalTouches')}
+              {renderPickOrType('finalTouches')}
+            </label>
+            <label className="field">
+              {renderLabel('Custom details', 'Any additional custom notes or details.', 'customDetails')}
+              <input
+                type="text"
+                value={current.customDetails || ''}
+                onChange={(e) => handleInput('customDetails', e.target.value)}
+                placeholder="e.g., ensure brand consistency, maintain signature style"
+                aria-label="Custom details"
+              />
+            </label>
+          </div>
+        </article>
+
+        <article className={`step ${step === 22 ? 'active' : ''}`}>
+          <div className="step-header">
+            <p className="eyebrow">Step 22</p>
             <h2>Review & build</h2>
             <p className="hint">Confirm your picks and grab the prompt.</p>
           </div>
@@ -3574,42 +3704,114 @@ export default function WizardPage() {
 
           <div className="summary">
             <SummaryItem label="Mode" value={labelForMode(mode)} />
-            <SummaryItem label="Genre" value={fieldValue('genre')} />
-            <SummaryItem label={captureWordTitle} value={fieldValue('shot')} />
-            <SummaryItem label="Role" value={fieldValue('role')} />
-            <SummaryItem label="Wardrobe" value={fieldValue('wardrobe')} />
+            
+            {/* Step 1: Creative Brief */}
+            <SummaryItem label="Scene description" value={current.sceneDescription || ''} fieldName="sceneDescription" onNavigate={setStep} />
+            <SummaryItem label="Main subject" value={fieldValue('mainSubject')} fieldName="mainSubject" onNavigate={setStep} />
+            <SummaryItem label="Story elements" value={fieldValue('storyElements')} fieldName="storyElements" onNavigate={setStep} />
+            <SummaryItem label="Inspiration notes" value={current.inspirationNotes || ''} fieldName="inspirationNotes" onNavigate={setStep} />
+            
+            {/* Step 2: Genre & Shot */}
+            <SummaryItem label="Genre" value={fieldValue('genre')} fieldName="genre" onNavigate={setStep} />
+            <SummaryItem label={captureWordTitle} value={fieldValue('shot')} fieldName="shot" onNavigate={setStep} />
+            <SummaryItem label="Framing notes" value={current.framingNotes || ''} fieldName="framingNotes" onNavigate={setStep} />
+            
+            {/* Step 3: Role & Wardrobe */}
+            <SummaryItem label="Role" value={fieldValue('role')} fieldName="role" onNavigate={setStep} />
+            <SummaryItem label="Wardrobe" value={fieldValue('wardrobe')} fieldName="wardrobe" onNavigate={setStep} />
             {mode !== 'drone' && (
               <>
-                <SummaryItem label="Hair" value={fieldValue('hairColor')} />
-                <SummaryItem label="Eyes" value={fieldValue('eyeColor')} />
-                <SummaryItem label="Body" value={fieldValue('bodyDescriptor')} />
+                <SummaryItem label="Hair" value={fieldValue('hairColor')} fieldName="hairColor" onNavigate={setStep} />
+                <SummaryItem label="Eyes" value={fieldValue('eyeColor')} fieldName="eyeColor" onNavigate={setStep} />
+                <SummaryItem label="Body" value={fieldValue('bodyDescriptor')} fieldName="bodyDescriptor" onNavigate={setStep} />
               </>
             )}
-            <SummaryItem label="Pose" value={fieldValue('pose')} />
-            <SummaryItem label="Actions" value={current.actions || ''} />
-            <SummaryItem label="Mood" value={fieldValue('mood')} />
-            <SummaryItem label="Lighting" value={fieldValue('lighting')} />
-            <SummaryItem label="Environment" value={fieldValue('environment')} />
-            <SummaryItem label="Camera" value={fieldValue('cameraMove')} />
-            <SummaryItem label="Lens" value={fieldValue('lens')} />
-            <SummaryItem label="Grade" value={fieldValue('colorGrade')} />
-            <SummaryItem label="Weather" value={fieldValue('weather')} />
-            <SummaryItem label="Light FX" value={fieldValue('lightInteraction')} />
-            <SummaryItem label="Signatures" value={[fieldValue('sig1'), fieldValue('sig2')].filter(Boolean).join(' · ')} />
-            <SummaryItem label="Sound" value={fieldValue('sound')} />
-            <SummaryItem label="SFX" value={fieldValue('sfx')} />
-            <SummaryItem label="Music" value={fieldValue('music')} />
-            <SummaryItem label="Mix notes" value={current.mix_notes || ''} />
-            <SummaryItem label="Dialogue" value={current.dialogue || ''} />
-            <SummaryItem label="Delivery" value={current.dialogue_verb || ''} />
-            <SummaryItem label="Speaker" value={current.pronoun || ''} />
+            
+            {/* Step 4: Pose & Mood */}
+            <SummaryItem label="Pose" value={fieldValue('pose')} fieldName="pose" onNavigate={setStep} />
+            <SummaryItem label="Mood" value={fieldValue('mood')} fieldName="mood" onNavigate={setStep} />
+            
+            {/* Step 5: Action beats */}
+            <SummaryItem label="Actions" value={current.actions || ''} fieldName="actions" onNavigate={setStep} />
+            
+            {/* Step 6: Lighting & Environment */}
+            <SummaryItem label="Lighting" value={fieldValue('lighting')} fieldName="lighting" onNavigate={setStep} />
+            <SummaryItem label="Environment" value={fieldValue('environment')} fieldName="environment" onNavigate={setStep} />
+            <SummaryItem label="Environment texture" value={fieldValue('environmentTexture')} fieldName="environmentTexture" onNavigate={setStep} />
+            
+            {/* Step 7: Camera & Lens */}
+            <SummaryItem label="Camera" value={fieldValue('cameraMove')} fieldName="cameraMove" onNavigate={setStep} />
+            <SummaryItem label="Lens" value={fieldValue('lens')} fieldName="lens" onNavigate={setStep} />
+            
+            {/* Step 8: Grade & Weather */}
+            <SummaryItem label="Grade" value={fieldValue('colorGrade')} fieldName="colorGrade" onNavigate={setStep} />
+            <SummaryItem label="Weather" value={fieldValue('weather')} fieldName="weather" onNavigate={setStep} />
+            
+            {/* Step 9: Light & signatures */}
+            <SummaryItem label="Light FX" value={fieldValue('lightInteraction')} fieldName="lightInteraction" onNavigate={setStep} />
+            <SummaryItem label="Signatures" value={[fieldValue('sig1'), fieldValue('sig2')].filter(Boolean).join(' · ')} fieldName="sig1" onNavigate={setStep} />
+            
+            {/* Step 10: Sound & SFX */}
+            <SummaryItem label="Sound" value={fieldValue('sound')} fieldName="sound" onNavigate={setStep} />
+            <SummaryItem label="SFX" value={fieldValue('sfx')} fieldName="sfx" onNavigate={setStep} />
+            
+            {/* Step 11: Music & Mix */}
+            <SummaryItem label="Music" value={fieldValue('music')} fieldName="music" onNavigate={setStep} />
+            <SummaryItem label="Mix notes" value={current.mix_notes || ''} fieldName="mix_notes" onNavigate={setStep} />
+            
+            {/* Step 12: Dialogue */}
+            <SummaryItem label="Dialogue" value={current.dialogue || ''} fieldName="dialogue" onNavigate={setStep} />
+            <SummaryItem label="Speaker" value={current.pronoun || ''} fieldName="pronoun" onNavigate={setStep} />
+            <SummaryItem label="Delivery" value={current.dialogue_verb || ''} fieldName="dialogue_verb" onNavigate={setStep} />
+            
+            {/* Step 13: Advanced Technical */}
+            <SummaryItem label="Advanced technical" value={fieldValue('advancedTechnical')} fieldName="advancedTechnical" onNavigate={setStep} />
+            <SummaryItem label="Cinematic notes" value={current.cinematicNotes || ''} fieldName="cinematicNotes" onNavigate={setStep} />
+            
+            {/* Steps 14-15: NSFW */}
             {nsfwEnabled && (
               <>
-                <SummaryItem label="Explicit abilities" value={current.explicit_abilities || ''} />
-                <SummaryItem label="Body" value={current.body_description || ''} />
-                <SummaryItem label="Sexual description" value={current.sexual_description || ''} />
+                <SummaryItem label="Position" value={fieldValue('position')} fieldName="position" onNavigate={setStep} />
+                <SummaryItem label="Activity" value={fieldValue('activity')} fieldName="activity" onNavigate={setStep} />
+                <SummaryItem label="Accessory" value={fieldValue('accessory')} fieldName="accessory" onNavigate={setStep} />
+                <SummaryItem label="Explicit abilities" value={current.explicit_abilities || ''} fieldName="explicit_abilities" onNavigate={setStep} />
+                <SummaryItem label="Body description" value={current.body_description || ''} fieldName="body_description" onNavigate={setStep} />
+                <SummaryItem label="Fetish" value={fieldValue('fetish')} fieldName="fetish" onNavigate={setStep} />
+                <SummaryItem label="Body focus" value={fieldValue('bodyFocus')} fieldName="bodyFocus" onNavigate={setStep} />
+                <SummaryItem label="Sensation" value={fieldValue('sensation')} fieldName="sensation" onNavigate={setStep} />
+                <SummaryItem label="Sexual description" value={current.sexual_description || ''} fieldName="sexual_description" onNavigate={setStep} />
               </>
             )}
+            
+            {/* Step 16: References & Inspiration */}
+            <SummaryItem label="References" value={fieldValue('references')} fieldName="references" onNavigate={setStep} />
+            <SummaryItem label="Inspiration style" value={fieldValue('inspirationStyle')} fieldName="inspirationStyle" onNavigate={setStep} />
+            <SummaryItem label="Visual reference" value={current.visualReference || ''} fieldName="visualReference" onNavigate={setStep} />
+            
+            {/* Step 17: Time, Season & Era */}
+            <SummaryItem label="Time of day" value={fieldValue('timeOfDay')} fieldName="timeOfDay" onNavigate={setStep} />
+            <SummaryItem label="Season" value={fieldValue('season')} fieldName="season" onNavigate={setStep} />
+            <SummaryItem label="Era" value={fieldValue('era')} fieldName="era" onNavigate={setStep} />
+            <SummaryItem label="Cultural context" value={fieldValue('culturalContext')} fieldName="culturalContext" onNavigate={setStep} />
+            
+            {/* Step 18: VFX & Effects */}
+            <SummaryItem label="Special effects" value={fieldValue('specialEffects')} fieldName="specialEffects" onNavigate={setStep} />
+            <SummaryItem label="Practical elements" value={fieldValue('practicalElements')} fieldName="practicalElements" onNavigate={setStep} />
+            <SummaryItem label="VFX notes" value={current.vfxNotes || ''} fieldName="vfxNotes" onNavigate={setStep} />
+            
+            {/* Step 19: Character Development */}
+            <SummaryItem label="Character development" value={fieldValue('characterDevelopment')} fieldName="characterDevelopment" onNavigate={setStep} />
+            <SummaryItem label="Emotional arc" value={fieldValue('emotionalArc')} fieldName="emotionalArc" onNavigate={setStep} />
+            <SummaryItem label="Subtext" value={fieldValue('subtext')} fieldName="subtext" onNavigate={setStep} />
+            
+            {/* Step 20: Pacing & Timing */}
+            <SummaryItem label="Pacing" value={fieldValue('pacing')} fieldName="pacing" onNavigate={setStep} />
+            <SummaryItem label="Timing" value={fieldValue('timing')} fieldName="timing" onNavigate={setStep} />
+            <SummaryItem label="Rhythm notes" value={current.rhythmNotes || ''} fieldName="rhythmNotes" onNavigate={setStep} />
+            
+            {/* Step 21: Final Touches */}
+            <SummaryItem label="Final touches" value={fieldValue('finalTouches')} fieldName="finalTouches" onNavigate={setStep} />
+            <SummaryItem label="Custom details" value={current.customDetails || ''} fieldName="customDetails" onNavigate={setStep} />
           </div>
           <div className="output">
             <div className="output-head">
@@ -3631,149 +3833,34 @@ export default function WizardPage() {
       </section>
 
       {/* Live Preview & Tools Sidebar */}
-      <aside className={`preview-sidebar ${previewOpen ? 'open' : 'closed'}`} aria-label="Preview and editing tools">
-        <div className="sidebar-toggle">
-          <button 
-            className="ghost small"
-            type="button" 
-            onClick={() => setPreviewOpen((v) => !v)}
-            title={previewOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            aria-label={previewOpen ? 'Collapse preview sidebar' : 'Expand preview sidebar'}
-          >
-            {previewOpen ? '⬎' : '⬏'}
-          </button>
-        </div>
-
-        {previewOpen && (
-          <>
-            <div className="sidebar-section preview-section">
-              <div className="sidebar-head">
-                <h3>Live Preview</h3>
-                <button className="ghost small" type="button" onClick={() => {
-                  void copyPrompt(prompt);
-                  addToPromptHistory(prompt);
-                  showToast('Copied & saved');
-                }}>📋 Copy</button>
-              </div>
-
-              <div className="preview-meta">
-                <div className="meta-row" aria-label="Preview context summary">
-                  <span className="meta-chip">Mode: {labelForMode(mode)}</span>
-                  <span className="meta-chip">Tone: {editorTone.charAt(0).toUpperCase() + editorTone.slice(1)}</span>
-                  <span className="meta-chip">Detail: {detailLabelFor(visualEmphasis)}</span>
-                  <span className="meta-chip">Audio: {audioLabelFor(audioEmphasis)}</span>
-                </div>
-                <div className="meta-actions">
-                  <button
-                    className="ghost tiny"
-                    type="button"
-                    onClick={() => addToPromptHistory(prompt)}
-                    title="Save to prompt history"
-                  >
-                    Save
-                  </button>
-                  <button
-                    className="ghost tiny"
-                    type="button"
-                    onClick={() => setPreviewOpen(false)}
-                    title="Hide preview"
-                  >
-                    Hide
-                  </button>
-                  {ollamaSettings.enabled && (
-                    <button
-                      className="ghost tiny"
-                      type="button"
-                      onClick={() => {
-                        setChatInput(prompt);
-                        setChatOpen(true);
-                        showToast('Prompt sent to chat');
-                      }}
-                      title="Send prompt to chat"
-                    >
-                      💬 Chat
-                    </button>
-                  )}
-                </div>
-              </div>
-              <pre key={previewAnimTick} className="preview-text">
-                {prompt}
-              </pre>
-            </div>
-
-            <div className="sidebar-divider" />
-
-            {/* Live Editing Tools */}
-            <div className="sidebar-section editing-tools">
-              <h4 className="sidebar-subtitle">Live Editing</h4>
-              
-              <div className="tool-group">
-                <label className="tool-label">Tone</label>
-                <div className="tone-buttons">
-                  {(['melancholic', 'balanced', 'energetic', 'dramatic'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className={`tone-btn ${editorTone === t ? 'active' : ''}`}
-                      onClick={() => setEditorTone(t)}
-                      title={`Set tone to ${t}`}
-                    >
-                      {t[0].toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="tool-group">
-                <div className="tool-header">
-                  <label className="tool-label">Visual Detail</label>
-                  <span className="tool-value">{visualEmphasis}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={visualEmphasis}
-                  onChange={(e) => setVisualEmphasis(Number(e.target.value))}
-                  className="tool-slider"
-                  aria-label="Adjust visual detail emphasis"
-                />
-                <div className="slider-hints">
-                  <span>Minimal</span>
-                  <span>Rich</span>
-                </div>
-              </div>
-
-              <div className="tool-group">
-                <div className="tool-header">
-                  <label className="tool-label">Audio Fill</label>
-                  <span className="tool-value">{audioEmphasis}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={audioEmphasis}
-                  onChange={(e) => setAudioEmphasis(Number(e.target.value))}
-                  className="tool-slider"
-                  aria-label="Adjust audio fill emphasis"
-                />
-                <div className="slider-hints">
-                  <span>Off</span>
-                  <span>Full</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </aside>
+      <PreviewSidebar
+        isOpen={previewOpen}
+        onToggle={() => setPreviewOpen((v) => !v)}
+        prompt={prompt}
+        onCopyPrompt={copyPrompt}
+        onSaveToHistory={addToPromptHistory}
+        onShowToast={showToast}
+        mode={mode}
+        labelForMode={labelForMode}
+        editorTone={editorTone}
+        onToneChange={setEditorTone}
+        visualEmphasis={visualEmphasis}
+        onVisualEmphasisChange={setVisualEmphasis}
+        audioEmphasis={audioEmphasis}
+        onAudioEmphasisChange={setAudioEmphasis}
+        detailLabelFor={detailLabelFor}
+        audioLabelFor={audioLabelFor}
+        ollamaSettings={ollamaSettings}
+        onSendToChat={(text) => {
+          setChatInput(text);
+          setChatOpen(true);
+        }}
+        previewAnimTick={previewAnimTick}
+      />
       </div>
 
-      {toast && (
-        <div className="toast" role="status" aria-live="polite">
-          {toast}
-        </div>
-      )}
+      {/* Toast Notification */}
+      <Toast message={toast} />
 
       <div className="sticky-nav-spacer" aria-hidden="true" />
       <footer className="sticky-nav" role="navigation" aria-label="Wizard navigation">
@@ -3821,306 +3908,33 @@ export default function WizardPage() {
         </div>
       </footer>
 
-      {/* Chat Panel */}
-      {chatOpen && (
-        <div className={`chat-panel ${chatMinimized ? 'minimized' : ''}`}>
-          <div className="chat-header">
-            <div className="chat-header-left">
-              <h3>Prompt Chat — Powered by Ollama</h3>
-              {!chatMinimized && (
-                <select
-                  className="chat-model-selector"
-                  value={chatModel || ollamaSettings.model}
-                  onChange={(e) => setChatModel(e.target.value)}
-                  disabled={!ollamaSettings.enabled}
-                >
-                  {ollamaAvailableModels.length > 0 ? (
-                    ollamaAvailableModels.map((m) => (
-                      <option key={m} value={m}>{m}</option>
-                    ))
-                  ) : (
-                    <option value={ollamaSettings.model}>{ollamaSettings.model}</option>
-                  )}
-                </select>
-              )}
-            </div>
-            <div className="chat-header-actions">
-              <button
-                className="ghost small"
-                type="button"
-                onClick={() => {
-                  setChatMessages([]);
-                  setChatInput('');
-                  showToast('Chat cleared');
-                }}
-                title="Start a new conversation"
-                aria-label="Start new chat"
-              >
-                New
-              </button>
-              <button
-                className="ghost small"
-                type="button"
-                onClick={() => {
-                  const contextMessage = `App Context:
-- Current Mode: ${labelForMode(mode)}
-- Tone: ${editorTone.charAt(0).toUpperCase() + editorTone.slice(1)}
-- Visual Detail: ${detailLabelFor(visualEmphasis)}
-- Audio Emphasis: ${audioLabelFor(audioEmphasis)}
-- Batch Count: ${batchCount}
-
-CURRENT FULL PREVIEW PROMPT:
-${prompt}
-
-Please review this context and let me know how I can optimize my prompts for the LTX model.`;
-                  setChatInput(contextMessage);
-                  setChatMessages([...chatMessages, { role: 'user', content: contextMessage }]);
-                  setTimeout(() => sendChatMessage(), 0);
-                }}
-                title="Gather app context and send to Nicole"
-                aria-label="Gather context"
-              >
-                Context
-              </button>
-              <button
-                className="ghost small"
-                type="button"
-                onClick={() => {
-                  // Find the last assistant message with code block
-                  for (let i = chatMessages.length - 1; i >= 0; i--) {
-                    if (chatMessages[i].role === 'assistant') {
-                      const codeMatch = chatMessages[i].content.match(/```prompt\n([\s\S]*?)\n```/);
-                      if (codeMatch) {
-                        const promptText = codeMatch[1].trim();
-                        // Create a paste-ready message for the preview
-                        navigator.clipboard.writeText(promptText);
-                        showToast('Prompt copied to clipboard - paste into preview');
-                        return;
-                      }
-                    }
-                  }
-                  showToast('No prompt found in chat');
-                }}
-                title="Copy last expanded prompt to clipboard"
-                aria-label="Copy prompt"
-              >
-                Copy
-              </button>
-              <button
-                className="icon-btn small"
-                type="button"
-                onClick={() => setChatSystemPromptModalOpen(true)}
-                title="Edit system prompt"
-                aria-label="Edit system prompt"
-              >
-                ⚙️
-              </button>
-              <button
-                className="icon-btn small"
-                type="button"
-                onClick={() => setChatMinimized(!chatMinimized)}
-                title={chatMinimized ? 'Maximize' : 'Minimize'}
-                aria-label={chatMinimized ? 'Maximize chat' : 'Minimize chat'}
-              >
-                {chatMinimized ? '▲' : '▼'}
-              </button>
-              <button
-                className="ghost small"
-                type="button"
-                onClick={() => {
-                  setChatOpen(false);
-                  setChatMessages([]);
-                  setChatMinimized(false);
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-
-          {!chatMinimized && (
-            <>
-              <div className="chat-messages" ref={chatMessagesRef}>
-            {chatMessages.length === 0 && (
-              <div className="chat-empty">
-                <p>Hi, I&apos;m Nicole. Let me help you craft better video prompts.</p>
-                <div className="suggested-messages">
-                  <button
-                    className="suggested-msg-btn"
-                    onClick={() => {
-                      const msg = "Help me improve this prompt for better visual quality";
-                      setChatInput(msg);
-                      setChatMessages([{ role: 'user', content: msg }]);
-                      setTimeout(() => sendChatMessage(), 0);
-                    }}
-                  >
-                    Improve a prompt
-                  </button>
-                  <button
-                    className="suggested-msg-btn"
-                    onClick={() => {
-                      const msg = "What elements should a cinematic video prompt include?";
-                      setChatInput(msg);
-                      setChatMessages([{ role: 'user', content: msg }]);
-                      setTimeout(() => sendChatMessage(), 0);
-                    }}
-                  >
-                    Learn about prompt structure
-                  </button>
-                  <button
-                    className="suggested-msg-btn"
-                    onClick={() => {
-                      const msg = "How do I describe camera movement effectively?";
-                      setChatInput(msg);
-                      setChatMessages([{ role: 'user', content: msg }]);
-                      setTimeout(() => sendChatMessage(), 0);
-                    }}
-                  >
-                    Camera movement tips
-                  </button>
-                  <button
-                    className="suggested-msg-btn"
-                    onClick={() => {
-                      const msg = "How do I write lighting descriptions for video?";
-                      setChatInput(msg);
-                      setChatMessages([{ role: 'user', content: msg }]);
-                      setTimeout(() => sendChatMessage(), 0);
-                    }}
-                  >
-                    Lighting guidance
-                  </button>
-                </div>
-              </div>
-            )}
-            {chatMessages.map((msg, idx) => {
-              // Parse markdown code blocks for display
-              const parts = msg.content.split(/(```[\s\S]*?```)/);
-              return (
-                <div key={idx} className={`chat-message ${msg.role}`}>
-                  <div className="chat-message-role">{msg.role === 'user' ? 'You' : 'Nicole'}</div>
-                  <div className="chat-message-content">
-                    {parts.map((part, i) => {
-                      if (part.startsWith('```') && part.endsWith('```')) {
-                        const codeContent = part.slice(3, -3).trim();
-                        const lines = codeContent.split('\n');
-                        const codeType = lines[0];
-                        const actualCode = lines.slice(1).join('\n');
-                        
-                        return (
-                          <div key={i} className="code-block">
-                            <div className="code-block-header">
-                              <span className="code-type">{codeType || 'code'}</span>
-                              <div className="code-block-buttons">
-                                <button
-                                  className="code-copy-btn"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(actualCode);
-                                    showToast('Copied to clipboard');
-                                  }}
-                                  title="Copy to clipboard"
-                                >
-                                  Copy
-                                </button>
-                                <button
-                                  className="code-copy-btn"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(actualCode);
-                                    showToast('Prompt copied - paste into preview');
-                                  }}
-                                  title="Copy and prepare to paste to preview"
-                                >
-                                  Use
-                                </button>
-                                {codeType === 'prompt' && (
-                                  <button
-                                    className="code-copy-btn"
-                                    onClick={() => {
-                                      addToPromptHistory(actualCode);
-                                      showToast('Saved to history');
-                                    }}
-                                    title="Save prompt to history"
-                                  >
-                                    Save
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <pre className="code-block-content">{actualCode}</pre>
-                          </div>
-                        );
-                      }
-                      return part ? <p key={i}>{part}</p> : null;
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-            {chatSending && (
-              <div className="chat-message assistant">
-                <div className="chat-message-role">Nicole</div>
-                <div className="chat-message-content chat-typing">Thinking...</div>
-              </div>
-            )}
-          </div>
-
-          <div className="chat-input-area">
-            <textarea
-              ref={chatInputRef}
-              className="chat-input"
-              value={chatInput}
-              onChange={(e) => {
-                setChatInput(e.target.value);
-                // Auto-resize textarea
-                e.target.style.height = 'auto';
-                e.target.style.height = e.target.scrollHeight + 'px';
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendChatMessage();
-                }
-              }}
-              placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
-              disabled={!ollamaSettings.enabled || chatSending}
-              rows={1}
-            />
-            <button
-              className="primary"
-              type="button"
-              onClick={sendChatMessage}
-              disabled={!ollamaSettings.enabled || chatSending || !chatInput.trim()}
-            >
-              {chatSending ? 'Sending...' : 'Send'}
-            </button>
-          </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* System Prompt Modal */}
-      {chatSystemPromptModalOpen && (
-        <div className="settings-overlay" onMouseDown={() => setChatSystemPromptModalOpen(false)}>
-          <div className="settings-panel chat-system-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="settings-head">
-              <div>
-                <h3 className="settings-title">Chat System Prompt</h3>
-                <p className="hint">Define how the AI assistant should behave in chat conversations.</p>
-              </div>
-              <button className="ghost" type="button" onClick={() => setChatSystemPromptModalOpen(false)}>Close</button>
-            </div>
-            <div className="settings-body" style={{gridTemplateColumns: '1fr'}}>
-              <textarea
-                className="chat-system-textarea-modal"
-                value={chatSystemPrompt}
-                onChange={(e) => setChatSystemPrompt(e.target.value)}
-                placeholder="Define how the AI should behave..."
-                rows={8}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Chat Panel Component */}
+      <ChatPanel
+        chatOpen={chatOpen}
+        setChatOpen={setChatOpen}
+        chatMessages={chatMessages}
+        setChatMessages={setChatMessages}
+        chatInput={chatInput}
+        setChatInput={setChatInput}
+        chatModel={chatModel}
+        setChatModel={setChatModel}
+        chatSystemPrompt={chatSystemPrompt}
+        setChatSystemPrompt={setChatSystemPrompt}
+        chatSystemPromptModalOpen={chatSystemPromptModalOpen}
+        setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
+        chatMinimized={chatMinimized}
+        setChatMinimized={setChatMinimized}
+        chatSending={chatSending}
+        ollamaSettings={ollamaSettings}
+        ollamaAvailableModels={ollamaAvailableModels}
+        prompt={prompt}
+        mode={mode}
+        editorTone={editorTone}
+        labelForMode={labelForMode}
+        showToast={showToast}
+        sendChatMessage={sendChatMessage}
+        addToPromptHistory={addToPromptHistory}
+      />
 
       {/* History View Modal Lightbox */}
       {historyViewModalOpen && (
@@ -4144,7 +3958,7 @@ Please review this context and let me know how I can optimize my prompts for the
               </button>
               <button className="ghost" type="button" onClick={() => setHistoryViewModalOpen(false)}>Close</button>
             </div>
-            <div className="settings-body history-view-body" style={{gridTemplateColumns: '1fr'}}>
+            <div className="settings-body history-view-body settings-body-single-col">
               <div className="history-view-content">
                 {historyViewModalText}
               </div>
@@ -4227,9 +4041,16 @@ function formatLtx2Section(title: string, lines: string[]) {
   return `${title}:\n${clean.map((l) => `- ${l}`).join('\n')}`;
 }
 
-function SummaryItem({ label, value }: { label: string; value?: string }) {
+function SummaryItem({ label, value, fieldName, onNavigate }: { label: string; value?: string; fieldName?: string; onNavigate?: (step: number) => void }) {
+  const stepNum = fieldName ? getStepForField(fieldName) : null;
+  const isClickable = stepNum && onNavigate;
+  
   return (
-    <div className="summary-item">
+    <div 
+      className={`summary-item ${isClickable ? 'clickable summary-item-clickable' : ''}`}
+      onClick={() => isClickable && onNavigate(stepNum)}
+      title={isClickable ? `Go to step ${stepNum}` : undefined}
+    >
       <div className="summary-label">{label}</div>
       <div className="summary-value">{value || '—'}</div>
     </div>
@@ -4623,7 +4444,46 @@ function buildCinematicParagraph(
   if (clean.sexual_description && clean.sexual_description.trim()) nsfwElements.push(lowercaseFirst(clean.sexual_description));
   const nsfwText = nsfwElements.length ? ` The scene is further defined by ${nsfwElements.join(', ')}.` : '';
 
-  const core = [base, scene, sound, dialogue, quality, mood, camera, nsfwText]
+  // New fields integration for paragraph format
+  const contextBits = [] as string[];
+  if (clean.scene_description) contextBits.push(`${lowercaseFirst(clean.scene_description)}`);
+  if (clean.main_subject) contextBits.push(`focusing on ${lowercaseFirst(clean.main_subject)}`);
+  if (clean.story_elements) contextBits.push(`with story elements of ${lowercaseFirst(clean.story_elements)}`);
+  const contextText = contextBits.length ? `${contextBits.join(', ')}.` : '';
+
+  const enhancementBits = [] as string[];
+  if (clean.advanced_technical) enhancementBits.push(`technical approach: ${lowercaseFirst(clean.advanced_technical)}`);
+  if (clean.cinematic_notes) enhancementBits.push(`cinematic notes: ${lowercaseFirst(clean.cinematic_notes)}`);
+  if (clean.references) enhancementBits.push(`referencing ${lowercaseFirst(clean.references)}`);
+  if (clean.inspiration_style) enhancementBits.push(`inspired by ${lowercaseFirst(clean.inspiration_style)}`);
+  const enhancementText = enhancementBits.length ? ` Additional production details include ${enhancementBits.join('; ')}.` : '';
+
+  const temporalBits = [] as string[];
+  if (clean.time_of_day) temporalBits.push(lowercaseFirst(clean.time_of_day));
+  if (clean.season) temporalBits.push(`during ${lowercaseFirst(clean.season)}`);
+  if (clean.era) temporalBits.push(`set in ${lowercaseFirst(clean.era)}`);
+  if (clean.cultural_context) temporalBits.push(`with ${lowercaseFirst(clean.cultural_context)} context`);
+  const temporalText = temporalBits.length ? ` The temporal setting is ${temporalBits.join(', ')}.` : '';
+
+  const effectsBits = [] as string[];
+  if (clean.special_effects) effectsBits.push(`special effects: ${lowercaseFirst(clean.special_effects)}`);
+  if (clean.practical_elements) effectsBits.push(`practical elements: ${lowercaseFirst(clean.practical_elements)}`);
+  if (clean.vfx_notes) effectsBits.push(`VFX notes: ${lowercaseFirst(clean.vfx_notes)}`);
+  const effectsText = effectsBits.length ? ` Effects work includes ${effectsBits.join('; ')}.` : '';
+
+  const narrativeBits = [] as string[];
+  if (clean.character_development) narrativeBits.push(`character development: ${lowercaseFirst(clean.character_development)}`);
+  if (clean.emotional_arc) narrativeBits.push(`emotional arc: ${lowercaseFirst(clean.emotional_arc)}`);
+  if (clean.subtext) narrativeBits.push(`subtext: ${lowercaseFirst(clean.subtext)}`);
+  if (clean.pacing) narrativeBits.push(`pacing: ${lowercaseFirst(clean.pacing)}`);
+  const narrativeText = narrativeBits.length ? ` The narrative layer emphasizes ${narrativeBits.join('; ')}.` : '';
+
+  const finishingBits = [] as string[];
+  if (clean.final_touches) finishingBits.push(lowercaseFirst(clean.final_touches));
+  if (clean.custom_details) finishingBits.push(lowercaseFirst(clean.custom_details));
+  const finishingText = finishingBits.length ? ` Final polish: ${finishingBits.join(', ')}.` : '';
+
+  const core = [contextText, base, scene, temporalText, sound, dialogue, quality, mood, camera, enhancementText, effectsText, narrativeText, finishingText, nsfwText]
     .filter(Boolean)
     .join(' ')
     .replace(/\s+/g, ' ')
@@ -4684,10 +4544,53 @@ function buildCinematicParagraph(
     ? nsfwElements.map(el => el.charAt(0).toUpperCase() + el.slice(1))
     : [];
 
+  // New fields from expanded steps
+  const context = [] as string[];
+  if (clean.scene_description) context.push(`Scene overview: ${lowercaseFirst(clean.scene_description)}`);
+  if (clean.main_subject) context.push(`Main subject: ${lowercaseFirst(clean.main_subject)}`);
+  if (clean.story_elements) context.push(`Story elements: ${lowercaseFirst(clean.story_elements)}`);
+  if (clean.inspiration_notes) context.push(`Inspiration: ${lowercaseFirst(clean.inspiration_notes)}`);
+  
+  const technical = [] as string[];
+  if (clean.advanced_technical) technical.push(`Technical approach: ${lowercaseFirst(clean.advanced_technical)}`);
+  if (clean.cinematic_notes) technical.push(`Cinematic notes: ${lowercaseFirst(clean.cinematic_notes)}`);
+  if (clean.references) technical.push(`References: ${lowercaseFirst(clean.references)}`);
+  if (clean.inspiration_style) technical.push(`Style inspiration: ${lowercaseFirst(clean.inspiration_style)}`);
+  if (clean.visual_reference) technical.push(`Visual reference: ${lowercaseFirst(clean.visual_reference)}`);
+  
+  const temporal = [] as string[];
+  if (clean.time_of_day) temporal.push(`Time: ${lowercaseFirst(clean.time_of_day)}`);
+  if (clean.season) temporal.push(`Season: ${lowercaseFirst(clean.season)}`);
+  if (clean.era) temporal.push(`Era: ${lowercaseFirst(clean.era)}`);
+  if (clean.cultural_context) temporal.push(`Cultural context: ${lowercaseFirst(clean.cultural_context)}`);
+  
+  const effects = [] as string[];
+  if (clean.special_effects) effects.push(`Special effects: ${lowercaseFirst(clean.special_effects)}`);
+  if (clean.practical_elements) effects.push(`Practical elements: ${lowercaseFirst(clean.practical_elements)}`);
+  if (clean.vfx_notes) effects.push(`VFX notes: ${lowercaseFirst(clean.vfx_notes)}`);
+  
+  const narrative = [] as string[];
+  if (clean.character_development) narrative.push(`Character development: ${lowercaseFirst(clean.character_development)}`);
+  if (clean.emotional_arc) narrative.push(`Emotional arc: ${lowercaseFirst(clean.emotional_arc)}`);
+  if (clean.subtext) narrative.push(`Subtext: ${lowercaseFirst(clean.subtext)}`);
+  if (clean.pacing) narrative.push(`Pacing: ${lowercaseFirst(clean.pacing)}`);
+  if (clean.timing) narrative.push(`Timing: ${lowercaseFirst(clean.timing)}`);
+  if (clean.rhythm_notes) narrative.push(`Rhythm: ${lowercaseFirst(clean.rhythm_notes)}`);
+  
+  const finishing = [] as string[];
+  if (clean.final_touches) finishing.push(`Final touches: ${lowercaseFirst(clean.final_touches)}`);
+  if (clean.custom_details) finishing.push(`Custom details: ${lowercaseFirst(clean.custom_details)}`);
+
   return [
+    formatLtx2Section('Creative Brief', context),
     formatLtx2Section('Core Actions', actions),
     formatLtx2Section('Visual Details', visuals),
     formatLtx2Section('Audio', audio),
+    formatLtx2Section('Technical & Style', technical),
+    formatLtx2Section('Temporal Context', temporal),
+    formatLtx2Section('Effects & VFX', effects),
+    formatLtx2Section('Narrative Elements', narrative),
+    formatLtx2Section('Final Polish', finishing),
     formatLtx2Section('NSFW', nsfw),
   ].filter(Boolean).join('\n\n');
 }
@@ -4712,6 +4615,12 @@ function buildClassicParagraph(
   const isMinimal = detailLevel === 'minimal';
 
   if (format === 'ltx2') {
+    const context = [] as string[];
+    if (data.scene_description) context.push(`Scene: ${lowercaseFirst(data.scene_description)}`);
+    if (data.main_subject) context.push(`Main subject: ${lowercaseFirst(data.main_subject)}`);
+    if (data.story_elements) context.push(`Story elements: ${lowercaseFirst(data.story_elements)}`);
+    if (data.inspiration_notes) context.push(`Inspiration: ${lowercaseFirst(data.inspiration_notes)}`);
+
     const coreActions = [] as string[];
     if (data.action) coreActions.push(data.action);
     if (data.camera) coreActions.push(`Camera movement: ${data.camera}`);
@@ -4735,16 +4644,58 @@ function buildClassicParagraph(
     if (data.mix_notes) audio.push(`Mix balance: ${lowercaseFirst(data.mix_notes)}`);
     if (data.dialogue) audio.push(`Dialogue: "${data.dialogue}"`);
 
+    const technical = [] as string[];
+    if (data.advanced_technical) technical.push(`Technical: ${lowercaseFirst(data.advanced_technical)}`);
+    if (data.cinematic_notes) technical.push(`Cinematic notes: ${lowercaseFirst(data.cinematic_notes)}`);
+    if (data.references) technical.push(`References: ${lowercaseFirst(data.references)}`);
+    if (data.inspiration_style) technical.push(`Style inspiration: ${lowercaseFirst(data.inspiration_style)}`);
+    if (data.visual_reference) technical.push(`Visual reference: ${lowercaseFirst(data.visual_reference)}`);
+
+    const temporal = [] as string[];
+    if (data.time_of_day) temporal.push(`Time: ${lowercaseFirst(data.time_of_day)}`);
+    if (data.season) temporal.push(`Season: ${lowercaseFirst(data.season)}`);
+    if (data.era) temporal.push(`Era: ${lowercaseFirst(data.era)}`);
+    if (data.cultural_context) temporal.push(`Cultural context: ${lowercaseFirst(data.cultural_context)}`);
+
+    const effects = [] as string[];
+    if (data.special_effects) effects.push(`Special effects: ${lowercaseFirst(data.special_effects)}`);
+    if (data.practical_elements) effects.push(`Practical elements: ${lowercaseFirst(data.practical_elements)}`);
+    if (data.vfx_notes) effects.push(`VFX notes: ${lowercaseFirst(data.vfx_notes)}`);
+
+    const narrative = [] as string[];
+    if (data.character_development) narrative.push(`Character: ${lowercaseFirst(data.character_development)}`);
+    if (data.emotional_arc) narrative.push(`Emotional arc: ${lowercaseFirst(data.emotional_arc)}`);
+    if (data.subtext) narrative.push(`Subtext: ${lowercaseFirst(data.subtext)}`);
+    if (data.pacing) narrative.push(`Pacing: ${lowercaseFirst(data.pacing)}`);
+    if (data.timing) narrative.push(`Timing: ${lowercaseFirst(data.timing)}`);
+    if (data.rhythm_notes) narrative.push(`Rhythm: ${lowercaseFirst(data.rhythm_notes)}`);
+
+    const finishing = [] as string[];
+    if (data.final_touches) finishing.push(`Final touches: ${lowercaseFirst(data.final_touches)}`);
+    if (data.custom_details) finishing.push(`Custom details: ${lowercaseFirst(data.custom_details)}`);
+
     return [
+      formatLtx2Section('Creative Brief', context),
       formatLtx2Section('Core Actions', coreActions),
       formatLtx2Section('Visual Details', visuals),
       formatLtx2Section('Audio', audio),
+      formatLtx2Section('Technical & Style', technical),
+      formatLtx2Section('Temporal Context', temporal),
+      formatLtx2Section('Effects & VFX', effects),
+      formatLtx2Section('Narrative Elements', narrative),
+      formatLtx2Section('Final Polish', finishing),
     ].filter(Boolean).join('\n\n');
   }
 
   const envText = data.environment_texture ? `${lowercaseFirst(data.environment_texture)} ${lowercaseFirst(data.environment || 'the scene')}` : (lowercaseFirst(data.environment || 'the scene'));
   const intensityText = data.lighting_intensity ? ` with ${lowercaseFirst(data.lighting_intensity)} intensity` : '';
   
+  const contextBits = [] as string[];
+  if (data.scene_description) contextBits.push(lowercaseFirst(data.scene_description));
+  if (data.main_subject) contextBits.push(`focusing on ${lowercaseFirst(data.main_subject)}`);
+  if (data.story_elements) contextBits.push(`with story elements of ${lowercaseFirst(data.story_elements)}`);
+  const contextText = contextBits.length ? `${contextBits.join(', ')}.` : '';
+
   const bits = [] as string[];
   bits.push(`A ${withCaptureWord(data.shot, captureWord)}`);
   bits.push(`capturing a ${lowercaseFirst(data.genre)} aesthetic`);
@@ -4766,7 +4717,40 @@ function buildClassicParagraph(
   if (data.dialogue) bits.push(`and dialogue that reads: "${data.dialogue}"`);
   if (!isMinimal && data.avoid) bits.push(`while avoiding ${lowercaseFirst(data.avoid)}`);
   
-  return bits.join(', ').replace(/,\s+/g, ', ').trim() + '.';
+  const enhancementBits = [] as string[];
+  if (data.advanced_technical) enhancementBits.push(`technical approach: ${lowercaseFirst(data.advanced_technical)}`);
+  if (data.cinematic_notes) enhancementBits.push(`cinematic notes: ${lowercaseFirst(data.cinematic_notes)}`);
+  if (data.references) enhancementBits.push(`referencing ${lowercaseFirst(data.references)}`);
+  if (data.inspiration_style) enhancementBits.push(`inspired by ${lowercaseFirst(data.inspiration_style)}`);
+  const enhancementText = enhancementBits.length ? ` Additional production details include ${enhancementBits.join('; ')}.` : '';
+
+  const temporalBits = [] as string[];
+  if (data.time_of_day) temporalBits.push(lowercaseFirst(data.time_of_day));
+  if (data.season) temporalBits.push(`during ${lowercaseFirst(data.season)}`);
+  if (data.era) temporalBits.push(`set in ${lowercaseFirst(data.era)}`);
+  if (data.cultural_context) temporalBits.push(`with ${lowercaseFirst(data.cultural_context)} context`);
+  const temporalText = temporalBits.length ? ` The temporal setting is ${temporalBits.join(', ')}.` : '';
+
+  const effectsBits = [] as string[];
+  if (data.special_effects) effectsBits.push(`special effects: ${lowercaseFirst(data.special_effects)}`);
+  if (data.practical_elements) effectsBits.push(`practical elements: ${lowercaseFirst(data.practical_elements)}`);
+  if (data.vfx_notes) effectsBits.push(`VFX notes: ${lowercaseFirst(data.vfx_notes)}`);
+  const effectsText = effectsBits.length ? ` Effects work includes ${effectsBits.join('; ')}.` : '';
+
+  const narrativeBits = [] as string[];
+  if (data.character_development) narrativeBits.push(`character development: ${lowercaseFirst(data.character_development)}`);
+  if (data.emotional_arc) narrativeBits.push(`emotional arc: ${lowercaseFirst(data.emotional_arc)}`);
+  if (data.subtext) narrativeBits.push(`subtext: ${lowercaseFirst(data.subtext)}`);
+  if (data.pacing) narrativeBits.push(`pacing: ${lowercaseFirst(data.pacing)}`);
+  const narrativeText = narrativeBits.length ? ` The narrative layer emphasizes ${narrativeBits.join('; ')}.` : '';
+
+  const finishingBits = [] as string[];
+  if (data.final_touches) finishingBits.push(lowercaseFirst(data.final_touches));
+  if (data.custom_details) finishingBits.push(lowercaseFirst(data.custom_details));
+  const finishingText = finishingBits.length ? ` Final polish: ${finishingBits.join(', ')}.` : '';
+
+  const core = bits.join(', ').replace(/,\s+/g, ', ').trim() + '.';
+  return [contextText, core, temporalText, enhancementText, effectsText, narrativeText, finishingText].filter(Boolean).join(' ');
 }
 
 function buildPrompt(
@@ -4827,6 +4811,31 @@ function buildPrompt(
       avoid: '',
       framing_notes: pick('framingNotes', ''),
       focus_target: pick('focusTarget', ''),
+      // Extended fields
+      scene_description: (current.sceneDescription || '').trim(),
+      main_subject: pick('mainSubject', ''),
+      story_elements: pick('storyElements', ''),
+      inspiration_notes: (current.inspirationNotes || '').trim(),
+      advanced_technical: pick('advancedTechnical', ''),
+      cinematic_notes: (current.cinematicNotes || '').trim(),
+      references: pick('references', ''),
+      inspiration_style: pick('inspirationStyle', ''),
+      visual_reference: (current.visualReference || '').trim(),
+      time_of_day: pick('timeOfDay', ''),
+      season: pick('season', ''),
+      era: pick('era', ''),
+      cultural_context: pick('culturalContext', ''),
+      special_effects: pick('specialEffects', ''),
+      practical_elements: pick('practicalElements', ''),
+      vfx_notes: (current.vfxNotes || '').trim(),
+      character_development: pick('characterDevelopment', ''),
+      emotional_arc: pick('emotionalArc', ''),
+      subtext: pick('subtext', ''),
+      pacing: pick('pacing', ''),
+      timing: pick('timing', ''),
+      rhythm_notes: (current.rhythmNotes || '').trim(),
+      final_touches: pick('finalTouches', ''),
+      custom_details: (current.customDetails || '').trim(),
     };
     return buildClassicParagraph(data, captureWord, promptFormat, detailLevel, autoFillAudio, autoFillCamera);
   }
@@ -4975,6 +4984,38 @@ function buildPrompt(
     explicit_abilities: nsfwEnabled ? current.explicit_abilities || '' : '',
     body_description: nsfwEnabled ? current.body_description || '' : '',
     sexual_description: nsfwEnabled ? current.sexual_description || '' : '',
+    // Step 1: Creative Brief
+    scene_description: (current.sceneDescription || '').trim(),
+    main_subject: pick('mainSubject', ''),
+    story_elements: pick('storyElements', ''),
+    inspiration_notes: (current.inspirationNotes || '').trim(),
+    // Step 13: Advanced Technical
+    advanced_technical: pick('advancedTechnical', ''),
+    cinematic_notes: (current.cinematicNotes || '').trim(),
+    // Step 16: References & Inspiration
+    references: pick('references', ''),
+    inspiration_style: pick('inspirationStyle', ''),
+    visual_reference: (current.visualReference || '').trim(),
+    // Step 17: Time, Season & Era
+    time_of_day: pick('timeOfDay', ''),
+    season: pick('season', ''),
+    era: pick('era', ''),
+    cultural_context: pick('culturalContext', ''),
+    // Step 18: VFX & Effects
+    special_effects: pick('specialEffects', ''),
+    practical_elements: pick('practicalElements', ''),
+    vfx_notes: (current.vfxNotes || '').trim(),
+    // Step 19: Character Development
+    character_development: pick('characterDevelopment', ''),
+    emotional_arc: pick('emotionalArc', ''),
+    subtext: pick('subtext', ''),
+    // Step 20: Pacing & Timing
+    pacing: pick('pacing', ''),
+    timing: pick('timing', ''),
+    rhythm_notes: (current.rhythmNotes || '').trim(),
+    // Step 21: Final Touches
+    final_touches: pick('finalTouches', ''),
+    custom_details: (current.customDetails || '').trim(),
   };
 
   const movementTimeline = buildMovementLines(current).join('\n');
@@ -5172,6 +5213,7 @@ function loadUiPrefs(): UiPrefs | null {
     const previewFontScale = typeof parsed.previewFontScale === 'number'
       ? Math.min(1.25, Math.max(0.85, parsed.previewFontScale))
       : DEFAULT_UI_PREFS.previewFontScale;
+    const hideNsfw = parsed.hideNsfw ?? DEFAULT_UI_PREFS.hideNsfw;
     return {
       typingEnabled: parsed.typingEnabled !== false,
       typingSpeedMs: typeof parsed.typingSpeedMs === 'number' ? parsed.typingSpeedMs : 14,
@@ -5182,6 +5224,7 @@ function loadUiPrefs(): UiPrefs | null {
       autoFillAudio,
       autoFillCamera,
       previewFontScale,
+      hideNsfw,
     };
   } catch {
     return null;

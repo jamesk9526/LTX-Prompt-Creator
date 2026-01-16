@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, data) => {
-      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state'];
+      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state', 'open-chat-window'];
       if (validChannels.includes(channel)) {
         ipcRenderer.send(channel, data);
       }
@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.once('window-state', resolve);
       ipcRenderer.send('get-window-state');
     }),
+    openChatWindow: () => ipcRenderer.send('open-chat-window'),
   },
 });
