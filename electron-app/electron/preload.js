@@ -3,13 +3,13 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, data) => {
-      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state', 'open-chat-window'];
+      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state', 'open-chat-window', 'chat-actions', 'close-chat-window'];
       if (validChannels.includes(channel)) {
         ipcRenderer.send(channel, data);
       }
     },
     on: (channel, func) => {
-      const validChannels = ['app-version', 'window-state'];
+      const validChannels = ['app-version', 'window-state', 'chat-actions'];
       if (validChannels.includes(channel)) {
         ipcRenderer.on(channel, (event, ...args) => func(...args));
       }

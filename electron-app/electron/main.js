@@ -211,6 +211,22 @@ ipcMain.on('open-chat-window', () => {
   }
 });
 
+// Forward chat actions from any renderer to the main wizard window
+ipcMain.on('chat-actions', (event, actions) => {
+  if (mainWindow && Array.isArray(actions)) {
+    mainWindow.webContents.send('chat-actions', actions);
+  }
+});
+
+// Allow popout to request closing itself (dock back to main)
+ipcMain.on('close-chat-window', () => {
+  if (chatWindow) {
+    chatWindow.close();
+    chatWindow = null;
+    if (mainWindow) mainWindow.focus();
+  }
+});
+
 // Cleanup when app quits
 app.on('before-quit', () => {
   // server.js doesn't keep a persistent process, but ensure clean shutdown

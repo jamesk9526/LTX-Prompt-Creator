@@ -23,6 +23,13 @@ export interface ChatPanelProps {
   chatMinimized: boolean;
   setChatMinimized: (minimized: boolean) => void;
   chatSending: boolean;
+  // Optional flags and callbacks used by popout chat
+  chatAllowControl?: boolean;
+  onActions?: (actions: any[]) => void;
+  onApplyPrompt?: (promptText: string) => void;
+  // Docking controls (optional)
+  docked?: boolean;
+  onToggleDock?: () => void;
   ollamaSettings: {
     enabled: boolean;
     model: string;
@@ -53,6 +60,9 @@ export default function ChatPanel({
   chatMinimized,
   setChatMinimized,
   chatSending,
+  onApplyPrompt,
+  docked,
+  onToggleDock,
   ollamaSettings,
   ollamaAvailableModels,
   prompt,
@@ -78,7 +88,7 @@ export default function ChatPanel({
   return (
     <>
       {/* Chat Panel */}
-      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''}`}>
+      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''} ${docked ? 'docked' : ''}`}>
         <div className="chat-header">
           <div className="chat-header-left">
             <div className="chat-title-block">
@@ -105,6 +115,17 @@ export default function ChatPanel({
             )}
           </div>
           <div className="chat-header-actions">
+            {onToggleDock && (
+              <button
+                className="ghost small"
+                type="button"
+                onClick={onToggleDock}
+                title={docked ? 'Undock to floating panel' : 'Dock to left sidebar'}
+                aria-label={docked ? 'Undock chat' : 'Dock chat'}
+              >
+                {docked ? 'Float' : 'Dock'}
+              </button>
+            )}
             <button
               className="ghost small"
               type="button"
@@ -303,6 +324,21 @@ Please review this context and let me know how I can optimize my prompts for the
                                           title="Save prompt to history"
                                         >
                                           Save
+                                        </button>
+                                      )}
+                                      {codeType === 'prompt' && (
+                                        <button
+                                          className="code-copy-btn"
+                                          onClick={() => {
+                                            if (typeof window !== 'undefined' && typeof onApplyPrompt === 'function') {
+                                              onApplyPrompt(actualCode);
+                                            } else {
+                                              showToast('Apply not available');
+                                            }
+                                          }}
+                                          title="Apply this prompt to the UI via actions"
+                                        >
+                                          Apply
                                         </button>
                                       )}
                                     </div>

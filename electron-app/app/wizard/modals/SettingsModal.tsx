@@ -71,6 +71,13 @@ interface SettingsModalProps {
   labelForMode: (mode: ModeId) => string;
   DEFAULT_OPTION_SETS: Record<string, Record<string, string[]>>;
   DEFAULT_OLLAMA_SETTINGS: OllamaSettings;
+  // Chat assistant controls
+  chatAllowControl?: boolean;
+  onChatAllowControlChange?: (enabled: boolean) => void;
+  chatModel?: string;
+  onSetChatModel?: (model: string) => void;
+  chatSystemPrompt?: string;
+  onSetChatSystemPrompt?: (value: string) => void;
 }
 
 export default function SettingsModal({
@@ -119,6 +126,12 @@ export default function SettingsModal({
   labelForMode,
   DEFAULT_OPTION_SETS,
   DEFAULT_OLLAMA_SETTINGS,
+  chatAllowControl = false,
+  onChatAllowControlChange = () => {},
+  chatModel = '',
+  onSetChatModel = () => {},
+  chatSystemPrompt = '',
+  onSetChatSystemPrompt = () => {},
 }: SettingsModalProps) {
   if (!isOpen) return null;
 
@@ -497,6 +510,53 @@ export default function SettingsModal({
                 </label>
               </>
             )}
+
+            <div className="settings-divider" />
+
+            <div className="settings-experience-head">
+              <p className="eyebrow">Chat Assistant</p>
+              <p className="hint">Configure Nicole and live UI control via chat.</p>
+            </div>
+
+            <div className="settings-experience-row">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={chatAllowControl}
+                  onChange={(e) => onChatAllowControlChange(e.target.checked)}
+                  aria-label="Allow chat to control UI"
+                />
+                <span className="slider" />
+              </label>
+              <div>
+                <div className="toggle-title">Allow chat to control UI</div>
+                <div className="toggle-note">Enables actions like changing mode, toggling preview, opening settings.</div>
+              </div>
+            </div>
+
+            <label className="field">
+              <span>Default Chat Model</span>
+              <input
+                type="text"
+                value={chatModel}
+                onChange={(e) => onSetChatModel(e.target.value)}
+                placeholder="llama2"
+                aria-label="Default chat model"
+              />
+            </label>
+
+            <label className="field">
+              <div className="field-header-with-action">
+                <span>Chat System Prompt</span>
+              </div>
+              <textarea
+                value={chatSystemPrompt}
+                onChange={(e) => onSetChatSystemPrompt(e.target.value)}
+                rows={6}
+                placeholder="Define Nicole's behavior for chat conversations"
+                aria-label="Chat system prompt"
+              />
+            </label>
 
             <div className="settings-divider" />
 

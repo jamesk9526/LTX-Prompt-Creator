@@ -9,6 +9,7 @@ import TopBar from './components/TopBar';
 import OllamaSidePanel from './modals/OllamaSidePanel';
 import SettingsModal from './modals/SettingsModal';
 import PreviewSidebar from './components/PreviewSidebar';
+import { ActionExecutor } from '../utils/ActionExecutor';
 
 type OptionSets = Record<string, Record<string, string[]>>;
 
@@ -1089,6 +1090,10 @@ export default function WizardPage() {
   const [chatSystemPrompt, setChatSystemPrompt] = useState('');
   const [chatSystemPromptModalOpen, setChatSystemPromptModalOpen] = useState(false);
   const [chatSending, setChatSending] = useState(false);
+  const [chatDocked, setChatDocked] = useState(false);
+  const [chatDockWidth, setChatDockWidth] = useState<number>(360);
+  const [isResizingChatDock, setIsResizingChatDock] = useState(false);
+  const chatResizeStartWidthRef = useRef<number | null>(null);
   const didHydrateRef = useRef(false);
   const didHydrateOptionSetsRef = useRef(false);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1129,8 +1134,10 @@ export default function WizardPage() {
     }
     // Load chat settings
     const loadedChatSettings = loadChatSettings();
-    if (loadedChatSettings?.chatModel) {
-      setChatModel(loadedChatSettings.chatModel);
+    if (loadedChatSettings) {
+      if (loadedChatSettings.chatModel) setChatModel(loadedChatSettings.chatModel);
+      if (typeof loadedChatSettings.chatDocked === 'boolean') setChatDocked(loadedChatSettings.chatDocked);
+      if (typeof loadedChatSettings.chatDockWidth === 'number') setChatDockWidth(loadedChatSettings.chatDockWidth);
     }
     // Load prompt history
     try {
@@ -1187,8 +1194,21 @@ export default function WizardPage() {
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
-    saveChatSettings({ chatModel });
+    const prev = loadChatSettings() || {};
+    saveChatSettings({ ...prev, chatModel });
   }, [chatModel]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    const prev = loadChatSettings() || {};
+    saveChatSettings({ ...prev, chatDocked });
+  }, [chatDocked]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    const prev = loadChatSettings() || {};
+    saveChatSettings({ ...prev, chatDockWidth });
+  }, [chatDockWidth]);
 
   useEffect(() => {
     // Auto-scroll to bottom when messages update
@@ -1196,6 +1216,28 @@ export default function WizardPage() {
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, chatSending]);
+
+  // Dock resize handlers
+  useEffect(() => {
+    if (!isResizingChatDock) return;
+    function onMouseMove(e: MouseEvent) {
+      if (chatResizeStartXRef.current == null || chatResizeStartWidthRef.current == null) return;
+      const delta = e.clientX - chatResizeStartXRef.current;
+      const next = Math.min(640, Math.max(260, chatResizeStartWidthRef.current + delta));
+      setChatDockWidth(next);
+    }
+    function onMouseUp() {
+      setIsResizingChatDock(false);
+      chatResizeStartXRef.current = null;
+      chatResizeStartWidthRef.current = null;
+    }
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isResizingChatDock]);
 
   // Get mode-specific system prompt for chat context
   const getModeSystemPrompt = (mode: ModeId): string => {
@@ -1229,6 +1271,79 @@ export default function WizardPage() {
       toastTimeoutRef.current = null;
     }, 1600);
   }, []);
+
+  // Build an action executor bound to current handlers/state
+  const actionExecutor = useMemo(() => {
+    return new ActionExecutor(
+      {
+        onOpenSettings: () => setSettingsOpen(true),
+        onSetMode: (m) => setMode(m as any),
+        onSetStep: (n) => setStep(n),
+        onEditorToneChange: (t) => setEditorTone(t as any),
+        onSetNsfwEnabled: (enabled) => setNsfwEnabled(enabled),
+        onPreviewToggle: () => setPreviewOpen((v) => !v),
+        onUpdateUiPref: (updater) => setUiPrefs((prev) => updater(prev)),
+        onUpdateOllama: (updater) => setOllamaSettings((prev) => updater(prev)),
+        onSetFieldValue: (field, value) =>
+          setValues((prev) => ({ ...prev, [mode]: { ...prev[mode], [field]: value } })),
+        onClearField: (field) =>
+          setValues((prev) => {
+            const next = { ...prev, [mode]: { ...prev[mode] } };
+            delete (next[mode] as any)[field];
+            return next;
+          }),
+        onBulkSetValues: (entries) =>
+          setValues((prev) => ({ ...prev, [mode]: { ...prev[mode], ...entries } })),
+        onSetChatModel: (model) => setChatModel(model),
+        onOpenChatSystemPrompt: () => setChatSystemPromptModalOpen(true),
+        onSetChatMinimized: (min) => setChatMinimized(min),
+        onShowToast: (msg) => showToast(msg),
+      },
+      { source: 'chat' }
+    );
+  }, [mode, showToast]);
+
+  // Ask the LLM to convert a prompt into UI actions, then execute
+  const applyPromptViaActions = useCallback(
+    async (promptText: string) => {
+      if (!ollamaSettings.enabled) {
+        showToast('🔧 Enable Ollama in Settings first');
+        return;
+      }
+
+      const modelToUse = chatModel || ollamaSettings.model;
+      try {
+        const systemSpec = `You are an assistant that outputs ONLY JSON for UI actions.\n\nTask: Given a creative prompt, produce a JSON array of actions to populate a wizard UI.\nSchema (strict):\n- setFieldValue { type: 'setFieldValue', field: string, value: string }\n- clearField { type: 'clearField', field: string }\n- bulkSetValues { type: 'bulkSetValues', entries: Record<string,string> }\n- setMode { type: 'setMode', value: 'cinematic'|'classic'|'drone'|'animation'|'photography'|'nsfw' }\n- setStep { type: 'setStep', value: number }\n- setEditorTone { type: 'setEditorTone', value: 'melancholic'|'balanced'|'energetic'|'dramatic' }\n- setNSFW { type: 'setNSFW', value: boolean }\n- togglePreview { type: 'togglePreview' }\n- openSettings { type: 'openSettings' }\n- updateUiPref { type: 'updateUiPref', key: string, value: any }\n- updateOllamaSetting { type: 'updateOllamaSetting', key: string, value: any }\n- setChatModel { type: 'setChatModel', value: string }\n- openChatSystemPrompt { type: 'openChatSystemPrompt' }\n- setChatMinimized { type: 'setChatMinimized', value: boolean }\n\nRules:\n- Output ONLY valid JSON (array or single object). No markdown, no prose.\n- Prefer bulkSetValues for multiple field updates.\n- Field names should match the wizard fields (e.g., genre, shotType, composition, lighting, camera, action, audio, etc.).\n- If unsure, set high-level fields (creative_brief/scene_description) and camera/lighting where evident.\n- Do not include a root object wrapper; output the JSON directly.`;
+
+        const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: modelToUse,
+            messages: [
+              { role: 'system', content: systemSpec },
+              { role: 'user', content: `Create UI actions for this prompt to populate the wizard.\n\nPROMPT:\n${promptText}` },
+            ],
+            stream: false,
+            options: { temperature: 0.2 },
+            keep_alive: 0,
+          }),
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        const content: string = data?.message?.content ?? '';
+        if (!content) throw new Error('Empty response');
+
+        await actionExecutor.executeFromJson(content, { skipErrors: true });
+        showToast('✅ Applied via actions');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast(`❌ Apply failed: ${msg}`);
+      }
+    },
+    [ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaSettings.model, chatModel, actionExecutor, showToast]
+  );
 
   const selects = useMemo(() => optionSets[mode] || {}, [optionSets, mode]);
   const current = useMemo(() => values[mode] || {}, [values, mode]);
@@ -2737,7 +2852,49 @@ export default function WizardPage() {
         />
       </div>
 
-      <div className="main-layout">
+      <div className={`main-layout ${chatOpen && chatDocked ? 'with-chat-dock' : ''}`} style={chatOpen && chatDocked ? ({ ['--chat-dock-width' as any]: `${chatDockWidth}px` } as any) : undefined}>
+        {chatOpen && chatDocked && (
+          <div style={{ position: 'relative' }}>
+            <ChatPanel
+              docked
+              onToggleDock={() => setChatDocked(false)}
+              onApplyPrompt={applyPromptViaActions}
+              chatOpen={true}
+              setChatOpen={setChatOpen}
+              chatMessages={chatMessages}
+              setChatMessages={setChatMessages}
+              chatInput={chatInput}
+              setChatInput={setChatInput}
+              chatModel={chatModel}
+              setChatModel={setChatModel}
+              chatSystemPrompt={chatSystemPrompt}
+              setChatSystemPrompt={setChatSystemPrompt}
+              chatSystemPromptModalOpen={chatSystemPromptModalOpen}
+              setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
+              chatMinimized={chatMinimized}
+              setChatMinimized={setChatMinimized}
+              chatSending={chatSending}
+              ollamaSettings={ollamaSettings}
+              ollamaAvailableModels={ollamaAvailableModels}
+              prompt={prompt}
+              mode={mode}
+              editorTone={editorTone}
+              labelForMode={labelForMode}
+              showToast={showToast}
+              sendChatMessage={sendChatMessage}
+              addToPromptHistory={addToPromptHistory}
+            />
+            <div
+              className="chat-resize-handle"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsResizingChatDock(true);
+                chatResizeStartXRef.current = e.clientX;
+                chatResizeStartWidthRef.current = chatDockWidth;
+              }}
+            />
+          </div>
+        )}
         <section className="steps">
         <article className={`step ${step === 1 ? 'active' : ''}`}>
           <div className="step-header">
@@ -3908,33 +4065,37 @@ export default function WizardPage() {
         </div>
       </footer>
 
-      {/* Chat Panel Component */}
-      <ChatPanel
-        chatOpen={chatOpen}
-        setChatOpen={setChatOpen}
-        chatMessages={chatMessages}
-        setChatMessages={setChatMessages}
-        chatInput={chatInput}
-        setChatInput={setChatInput}
-        chatModel={chatModel}
-        setChatModel={setChatModel}
-        chatSystemPrompt={chatSystemPrompt}
-        setChatSystemPrompt={setChatSystemPrompt}
-        chatSystemPromptModalOpen={chatSystemPromptModalOpen}
-        setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
-        chatMinimized={chatMinimized}
-        setChatMinimized={setChatMinimized}
-        chatSending={chatSending}
-        ollamaSettings={ollamaSettings}
-        ollamaAvailableModels={ollamaAvailableModels}
-        prompt={prompt}
-        mode={mode}
-        editorTone={editorTone}
-        labelForMode={labelForMode}
-        showToast={showToast}
-        sendChatMessage={sendChatMessage}
-        addToPromptHistory={addToPromptHistory}
-      />
+      {/* Chat Panel Component (floating when not docked) */}
+      {chatOpen && !chatDocked && (
+        <ChatPanel
+          onToggleDock={() => setChatDocked(true)}
+          onApplyPrompt={applyPromptViaActions}
+          chatOpen={chatOpen}
+          setChatOpen={setChatOpen}
+          chatMessages={chatMessages}
+          setChatMessages={setChatMessages}
+          chatInput={chatInput}
+          setChatInput={setChatInput}
+          chatModel={chatModel}
+          setChatModel={setChatModel}
+          chatSystemPrompt={chatSystemPrompt}
+          setChatSystemPrompt={setChatSystemPrompt}
+          chatSystemPromptModalOpen={chatSystemPromptModalOpen}
+          setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
+          chatMinimized={chatMinimized}
+          setChatMinimized={setChatMinimized}
+          chatSending={chatSending}
+          ollamaSettings={ollamaSettings}
+          ollamaAvailableModels={ollamaAvailableModels}
+          prompt={prompt}
+          mode={mode}
+          editorTone={editorTone}
+          labelForMode={labelForMode}
+          showToast={showToast}
+          sendChatMessage={sendChatMessage}
+          addToPromptHistory={addToPromptHistory}
+        />
+      )}
 
       {/* History View Modal Lightbox */}
       {historyViewModalOpen && (
@@ -5128,7 +5289,7 @@ function saveOllamaSettings(settings: OllamaSettings) {
   }
 }
 
-function loadChatSettings(): { chatModel: string } | null {
+function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number } | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(CHAT_SETTINGS_STORAGE_KEY);
@@ -5139,7 +5300,7 @@ function loadChatSettings(): { chatModel: string } | null {
   }
 }
 
-function saveChatSettings(settings: { chatModel: string }) {
+function saveChatSettings(settings: { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number }) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(CHAT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));

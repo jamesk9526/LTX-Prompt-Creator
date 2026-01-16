@@ -130,6 +130,15 @@ body {
   margin-top: 80px;
 }
 
+/* Chat docked layout: introduce left column with resizable width */
+.main-layout.with-chat-dock {
+  grid-template-columns: var(--chat-dock-width, 360px) 1fr 380px;
+}
+
+.main-layout.with-chat-dock:has(.preview-sidebar.closed) {
+  grid-template-columns: var(--chat-dock-width, 360px) 1fr;
+}
+
 /* When preview is closed, center the steps */
 .main-layout:has(.preview-sidebar.closed) {
   grid-template-columns: 1fr;
@@ -718,9 +727,38 @@ body {
   transition: all 0.3s ease;
 }
 
+/* Docked chat: behaves as a sidebar column */
+.chat-panel.docked {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  max-height: none;
+  height: calc(100vh - 80px - 32px);
+  /* 80px topbar margin-top + 32px bottom sticky nav approx spacing */
+  border-right: 1px solid var(--border);
+  border-left: none;
+  box-shadow: inset -1px 0 0 var(--border);
+  animation: none;
+}
+
 .chat-panel.minimized {
   max-height: 52px;
   overflow: hidden;
+}
+
+/* Docked resize handle */
+.chat-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+}
+.chat-resize-handle:hover {
+  background: linear-gradient(to right, transparent, rgba(124, 58, 237, 0.15), transparent);
 }
 
 @keyframes slideInUp {
