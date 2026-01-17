@@ -2,47 +2,45 @@
 
 A friendly, guided prompt wizard for video and creative production. Create professional video prompts with AI assistance, organized project management, and smart suggestions.
 
-**Status:** Version 1.0.1 | Windows Desktop App | Built with Next.js + React + Electron
+**Version:** 1.0.1 | Windows Desktop App | Built with Next.js + React + Electron
 
 ---
 
-## Table of Contents
+## 📋 Table of Contents
 
 - [Getting Started](#getting-started)
   - [For Users](#for-users)
   - [For Developers](#for-developers)
-- [How to Use the App](#how-to-use-the-app)
-- [Source Code Guide](#source-code-guide)
-- [Contributing & Support](#contributing--support)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Building & Distribution](#building--distribution)
+- [Contributing](#contributing)
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### For Users
 
 #### Installation
 
-1. **Download the installer** from the [Releases](https://github.com/jamesk9526/LTX-Prompt-Creator/releases) page
-2. **Run the installer** (`LTX Prompter Setup.exe`)
-3. **Launch the app** from your Start Menu or Desktop shortcut
-
-#### Running the App
-
-- Simply click the app shortcut or search for "LTX Prompter" in Windows
-- The app window opens automatically with the prompt wizard
+1. Download the installer from the [Releases](https://github.com/jamesk9526/LTX-Prompt-Creator/releases) page
+2. Run `LTX Prompter Setup.exe`
+3. Launch from Start Menu or Desktop shortcut
 
 #### First-Time Setup
 
-1. **Review Settings** (gear icon in top-right)
-   - Enable/disable Ollama for AI features
-   - Configure model and endpoint if using Ollama
-   - Adjust other preferences
+1. **Configure Settings** (gear icon)
+   - Enable/disable Ollama AI features
+   - Set model and endpoint
+   - Adjust preferences
 
-2. **Create Your First Project** (Projects button in top bar)
-   - Click "New Project"
-   - Name your project
-   - Select a mode and base prompt
+2. **Create Your First Project**
+   - Click "Projects" button
+   - Create new project
+   - Select mode and base prompt
 
 ---
 
@@ -50,314 +48,301 @@ A friendly, guided prompt wizard for video and creative production. Create profe
 
 #### Prerequisites
 
-- **Node.js** 18+ ([download here](https://nodejs.org/))
-- **Windows** (for building; Electron development requires native Windows tools)
-- **Git** for cloning the repo
+- Node.js 18+ ([download](https://nodejs.org/))
+- Windows OS (for building)
+- Git
 
-#### Quick Start (Development)
+#### Quick Start
 
 ```bash
-# Clone and navigate
+# Clone repository
 git clone https://github.com/jamesk9526/LTX-Prompt-Creator.git
 cd ltx_prompter/electron-app
 
 # Install dependencies
 npm install
 
-# Run in development mode with live reload
+# Run in development mode
 npm run dev:electron
 ```
 
-The app opens automatically. Changes to React/Next.js code auto-refresh in the window.
-
-#### Building the Installer
+#### Building
 
 ```bash
 cd electron-app
 
-# Clean, build, and create Windows installer + portable exe
+# Build Windows installer and portable exe
 npm run dist:win
 ```
 
-Output files are in `electron-app/release/`:
-- `LTX Prompter Setup 1.0.1.exe` — Full NSIS installer with uninstaller
-- `LTX Prompter 1.0.1 x64 Portable.exe` — Standalone, no installation required
+Output in `electron-app/release/`:
+- `LTX Prompter Setup 1.0.1.exe` — NSIS installer
+- `LTX Prompter 1.0.1 x64 Portable.exe` — Standalone executable
 
-#### Project Structure
+---
+
+## ✨ Features
+
+### Core Features
+- **Prompt Wizard**: Step-by-step guided prompt creation
+- **Multiple Modes**: Cinematic, Classic, Photography, Abstract, Experimental
+- **AI Chat Integration**: Optional Ollama integration for AI assistance
+- **Project Management**: Organize prompts in projects
+- **History Tracking**: Save and manage chat sessions
+- **Export Options**: JSON, Markdown, Plain Text
+
+### AI Features (Ollama Integration)
+- Real-time chat with AI models
+- Smart prompt suggestions
+- UI control via natural language
+- Action execution (update fields, navigate steps)
+- NSFW content filtering
+
+### Advanced Features
+- **Virtualized Chat**: High-performance rendering for 1000+ messages
+- **Chat History**: Browse, search, filter, and export conversations
+- **Keyboard Shortcuts**: Fast navigation and actions
+- **Error Boundaries**: Graceful error handling
+- **Auto-save**: Automatic chat session persistence
+- **Dark Theme**: Professional dark UI
+
+---
+
+## 🏗 Architecture
+
+### Application Stack
+- **Frontend**: Next.js 15 + React 19
+- **Desktop**: Electron 33
+- **Language**: TypeScript
+- **Styling**: CSS Modules + Global CSS
+- **State**: React Hooks + Local Storage
+- **IPC**: Electron IPC for main/renderer communication
+
+### Key Components
 
 ```
 electron-app/
 ├── app/                      # Next.js application
-│   ├── wizard/page.tsx       # Main prompt wizard interface
-│   ├── chat/page.tsx         # Chat/AI conversation view
-│   ├── components/           # Reusable React components
+│   ├── wizard/              # Main prompt wizard
+│   │   ├── page.tsx         # Main wizard page
+│   │   ├── components/      # TopBar, PreviewSidebar
+│   │   └── modals/          # Settings, Ollama panel
+│   ├── chat/                # Chat interface (legacy)
+│   ├── components/          # Shared React components
+│   │   ├── ChatPanel.tsx
+│   │   ├── VirtualizedChatPanel.tsx
+│   │   ├── ChatHistorySidebar.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   └── modals/          # Reusable modals
 │   ├── hooks/               # Custom React hooks
-│   ├── types/               # TypeScript type definitions
-│   ├── utils/               # Utility functions
-│   └── globals.css          # Global styles
-├── electron/                # Electron main process & IPC
+│   ├── types/               # TypeScript definitions
+│   └── utils/               # Utilities
+│       ├── ChatHistoryManager.ts
+│       ├── ActionExecutor.ts
+│       ├── logger.ts
+│       └── debounce.ts
+├── electron/                # Electron main process
 │   ├── main.js              # App entry point
-│   ├── preload.js           # IPC bridge
-│   └── server.js            # Backend server
+│   └── preload.js           # IPC bridge
 ├── public/                  # Static assets
-├── docs/                    # Documentation
-├── tests/                   # Test files
-├── package.json             # Dependencies and scripts
-└── tsconfig.json            # TypeScript configuration
+├── system_prompts/          # AI system prompts
+└── package.json
 ```
 
-#### Available Commands
+### Data Flow
 
-| Command | Purpose |
-|---------|---------|
-| `npm run dev` | Run Next.js dev server only |
-| `npm run dev:electron` | Run with Electron app window |
-| `npm run build` | Build Next.js app for production |
-| `npm run dist:win` | Build Windows installer + portable |
-| `npm run dist:mac` | Build macOS DMG/ZIP |
-| `npm run dist:linux` | Build Linux AppImage/DEB |
-| `npm run clean` | Clean build artifacts |
-| `npm run lint` | Run ESLint |
-| `npm run icons` | Regenerate app icons |
-
-#### Development Workflow
-
-1. **Make changes** to code in `app/` or `electron/`
-2. **See updates** automatically in the Electron window
-3. **Test features** using the dev app
-4. **Run tests** with `npm run test:natural`
-5. **Build for release** with `npm run dist:win`
-
-#### Tech Stack
-
-- **Frontend:** React 18 + Next.js 14 (TypeScript)
-- **Desktop:** Electron 29
-- **Build:** Electron Builder
-- **Styling:** CSS modules + globals
-- **Type Safety:** TypeScript with strict checks
-
-#### Troubleshooting Development
-
-**Port 3000 already in use?**
-```bash
-# Kill the process using port 3000 and try again
-# Or manually change the port in package.json dev script
+```
+User Interface (React)
+    ↕ (IPC via preload.js)
+Electron Main Process
+    ↕
+File System / OS APIs
 ```
 
-**Electron window won't open?**
-- Check that Next.js dev server started successfully
-- Look for errors in the terminal
-- Run `npm run clean` and try again
+### Storage Architecture
 
-**Build fails?**
-- Ensure all dependencies are installed: `npm install`
-- Check Node.js version: `node --version` (should be 18+)
-- Try cleaning: `npm run clean && npm run build`
+- **Local Storage**: Settings, projects, prompts
+- **Chat History**: localStorage with 10MB limit
+- **Project Data**: JSON files via Electron IPC
+- **System Prompts**: File system via Electron
 
 ---
 
-## How to Use the App
+## 📁 Project Structure
 
-### Main Features
-
-#### 1. **The Wizard** (Main Interface)
-
-The prompt wizard guides you through creating detailed video production prompts step-by-step.
-
-- **Step Navigation** — Use the top bar or Step buttons to navigate
-- **Modes** — Switch between different prompt types (Default, Cinematic, Technical, etc.)
-- **Live Preview** — See your prompt build in real-time
-- **Tone Selection** — Choose emotional tone (upbeat, serious, melancholic, etc.)
-
-#### 2. **Projects**
-
-Manage and organize your prompts as projects.
-
-**Create a Project:**
-1. Click **Projects** button (top bar)
-2. Click **New Project**
-3. Enter a name and select a starting template
-4. Click Create
-
-**Load a Project:**
-1. Click **Projects**
-2. Select a project from the list
-3. Click Load (or double-click the project name)
-
-**Save/Export:**
-- Changes auto-save to the project
-- Click **Export** to save as JSON file for backup or sharing
-- Click **Delete** to remove a project
-
-**Import:**
-- Click **Import** and select a previously exported JSON file
-- Restores all prompt data
-
-#### 3. **Chat & AI Features**
-
-Get AI assistance for prompt refinement and expansion.
-
-**Enable AI Features:**
-1. Click **Settings** (gear icon, top-right)
-2. Check **Enable Ollama**
-3. Select a model from the dropdown
-4. Verify the endpoint (default: `http://localhost:11434`)
-
-**Using AI:**
-- **Chat Panel** — Send messages to an AI model for ideas and feedback
-- **AI Refiner** — Get specific suggestions to improve your prompt
-- **Auto-Refine** — Let AI completely revise your prompt
-- **Ollama Expand** — Expand the current prompt using your selected model
-
-**AI Suggestion Categories:**
-- 🎯 **Specificity** — Add concrete details instead of vague language
-- ✨ **Details** — Include technical or visual specifics
-- ❤️ **Emotion** — Strengthen emotional impact
-- ⚙️ **Technical** — Add cinematography details
-- 🎭 **Tone** — Align with selected mood
-- 📐 **Structure** — Improve logical flow
-
-#### 4. **Settings**
-
-Configure app behavior and AI integration.
-
-**Available Settings:**
-- **Ollama Integration** — Enable/disable, set endpoint and model
-- **Auto-Save** — Enable/disable automatic project saving
-- **Theme** — Light/Dark mode preferences
-- **App Preferences** — Various UI and behavior options
-
-#### 5. **System Prompts**
-
-Pre-built prompts guide the AI behavior for different creative contexts. Access them in the Chat view or through Settings.
-
-### Typical Workflow
-
-1. **Start the app** and click **Projects**
-2. **Create a new project** or load an existing one
-3. **Navigate through the wizard steps** (Mode → Tone → Elements → Details)
-4. **Build your prompt** using the provided fields
-5. **Preview** your prompt in the main text area
-6. **Refine** using AI suggestions (if Ollama is enabled)
-7. **Chat** with the AI for feedback or ideas
-8. **Export** when done or save for later
-
-### Installing Ollama (For AI Features)
-
-If you want to use AI-powered features:
-
-1. **Download Ollama** from https://ollama.com/
-2. **Install and run it**
-3. **Pull a model** in Ollama:
-   ```bash
-   ollama pull llama3
-   ```
-4. **In LTX Prompter Settings:**
-   - Enable Ollama
-   - Select your model
-   - Keep endpoint as `http://localhost:11434`
-
-Popular models: `llama3`, `mistral`, `neural-chat`, `dolphin-mixtral`
+```
+ltx_prompter/
+├── electron-app/            # Main application
+│   ├── app/                 # Next.js frontend
+│   ├── electron/            # Electron backend
+│   ├── public/              # Static files
+│   ├── release/             # Build output
+│   └── package.json
+├── LTX-prompter---RAW-Edition/  # Legacy/experimental version
+├── README.md                # This file
+└── TODO.md                  # Task list
+```
 
 ---
 
-## Source Code Guide
+## 💻 Development
 
-### Key Files & Directories
-
-#### App Pages
-- `app/wizard/page.tsx` — Main prompt creation interface
-- `app/chat/page.tsx` — Chat interface with AI
-- `app/page.tsx` — Home/landing page
-
-#### Components
-- `app/components/ChatPanel.tsx` — Chat UI and message rendering
-- `app/components/ProjectsModal.tsx` — Project management interface
-- `app/components/Toast.tsx` — Notification system
-
-#### Hooks
-- `app/hooks/` — Custom React hooks for state management
-
-#### Utilities
-- `app/utils/` — Helper functions for prompt building, AI integration, storage
-
-#### Electron
-- `electron/main.js` — Electron main process, window creation
-- `electron/preload.js` — IPC bridge for secure communication
-- `electron/server.js` — Backend API (if applicable)
-
-### Adding Features
-
-**To add a new component:**
-1. Create file in `app/components/YourComponent.tsx`
-2. Use TypeScript for type safety
-3. Follow existing component patterns
-4. Import and use in pages
-
-**To add a new page:**
-1. Create directory in `app/your-page/`
-2. Add `page.tsx` inside
-3. Router automatically adds `/your-page` route
-
-**To modify the wizard:**
-1. Edit `app/wizard/page.tsx`
-2. Add new step sections or fields
-3. Update types in `app/types/` if needed
-
-### Testing
+### Available Scripts
 
 ```bash
-# Run natural language validation tests
-npm run test:natural
+# Development
+npm run dev              # Next.js dev server
+npm run dev:electron     # Full Electron app with hot reload
 
-# Other test commands in package.json
+# Building
+npm run build           # Build Next.js app
+npm run dist:win        # Create Windows installer + portable
+
+# Utilities
+npm run clean           # Clean build artifacts
+npm run type-check      # Run TypeScript checks
 ```
 
-### Documentation
+### Environment Setup
 
-Check `electron-app/docs/` for detailed guides:
-- `START_HERE.md` — Component refactoring overview
-- `AI_FEATURES_GUIDE.md` — AI integration details
-- `COMPONENT_ARCHITECTURE.md` — Technical architecture
-- `QUICK_REFERENCE_GUIDE.md` — Common tasks cheatsheet
+The app auto-detects Electron environment and configures accordingly. No environment variables required for basic development.
 
----
+### Debugging
 
-## Contributing & Support
+- **React DevTools**: Available in dev mode
+- **Chrome DevTools**: Press F12 in the app window
+- **Logs**: Check `electron/main.js` console output
 
-### Report Issues
+### Code Style
 
-Found a bug? Have a feature request?
-- **GitHub Issues:** https://github.com/jamesk9526/LTX-Prompt-Creator/issues
-
-### Support the Project
-
-- **Repository:** https://github.com/jamesk9526/LTX-Prompt-Creator
-- **Tip Jar:** https://ko-fi.com/jamesknox
-
-### License
-
-MIT License — Feel free to use, modify, and distribute
+- TypeScript strict mode enabled
+- ES6+ features
+- React functional components with hooks
+- CSS Modules for component styles
+- Async/await for async operations
 
 ---
 
-## FAQ
+## 📦 Building & Distribution
 
-**Q: Do I need Ollama?**
-A: No, the app works without it. Ollama is optional and enables AI-powered features like suggestions and expansion.
+### Windows Installer
 
-**Q: Can I use this on Mac/Linux?**
-A: The codebase supports it, but distribution builds are currently Windows-focused. Developers can build for Mac/Linux with `npm run dist:mac` or `npm run dist:linux`.
+```bash
+cd electron-app
+npm run dist:win
+```
 
-**Q: Where are my projects saved?**
-A: Projects are stored locally in your user directory (Windows AppData). Use Export/Import to back them up or share them.
+Creates:
+1. NSIS Installer with start menu integration
+2. Portable executable (no installation)
 
-**Q: How do I request a feature?**
-A: Open an issue on GitHub with `[FEATURE REQUEST]` in the title.
+### Build Configuration
 
-**Q: Can I modify the system prompts?**
-A: Yes, they're in `electron-app/system_prompts/`. Edit and the app will use your changes.
+See `electron-app/package.json` for:
+- Electron Builder config
+- File inclusion patterns
+- Icon and asset management
+- NSIS installer options
+
+### Release Checklist
+
+1. Update version in `package.json`
+2. Test build locally
+3. Run `npm run dist:win`
+4. Test installer and portable exe
+5. Create GitHub release
+6. Upload build artifacts
 
 ---
 
-**Last Updated:** January 2026 | Version 1.0.1
+## 🎯 Key Features Implementation
+
+### Chat Virtualization
+Uses `react-window` for rendering only visible messages, enabling smooth performance with 1000+ messages.
+
+### Chat History Management
+- **Storage**: localStorage with 10MB limit
+- **Features**: Save, load, search, filter, export
+- **Limits**: 100 sessions maximum
+- **Export Formats**: JSON, Markdown, Text
+
+### AI Actions System
+Ollama can control UI via structured actions:
+- `update_field`: Modify form fields
+- `navigate_step`: Change wizard steps
+- `set_mode`: Switch between modes
+- `apply_preset`: Load prompt presets
+
+### Error Handling
+- Error boundaries for component crashes
+- Graceful fallbacks for missing data
+- User-friendly error messages
+- Detailed logging for debugging
+
+---
+
+## 🤝 Contributing
+
+### Getting Started
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
+
+### Development Guidelines
+- Follow existing code style
+- Add TypeScript types for new code
+- Test thoroughly before submitting
+- Update documentation as needed
+- Write meaningful commit messages
+
+### Reporting Issues
+- Use GitHub Issues
+- Include reproduction steps
+- Provide error messages/logs
+- Specify OS and version
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 🙏 Acknowledgments
+
+- Built with Next.js, React, and Electron
+- Chat virtualization via react-window
+- Icons from Lucide React
+- Inspired by creative AI tools
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/jamesk9526/LTX-Prompt-Creator/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jamesk9526/LTX-Prompt-Creator/discussions)
+
+---
+
+## 🔄 Version History
+
+### 1.0.1 (Current)
+- Chat history implementation
+- Virtualized chat rendering
+- Performance optimizations
+- Error boundary improvements
+- UI/UX enhancements
+
+### 1.0.0
+- Initial release
+- Prompt wizard interface
+- Ollama integration
+- Project management
+- Basic chat functionality
+
+---
+
+**Made with ❤️ for creative professionals**

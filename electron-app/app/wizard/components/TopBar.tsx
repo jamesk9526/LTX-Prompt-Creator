@@ -60,6 +60,10 @@ interface TopBarProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onSaveChat?: () => void;
+  chatSessionUnsaved?: boolean;
+  onToggleChatHistory?: () => void;
+  chatHistoryOpen?: boolean;
 }
 
 export default function TopBar({
@@ -97,6 +101,10 @@ export default function TopBar({
   onRedo,
   canUndo = false,
   canRedo = false,
+  onSaveChat,
+  chatSessionUnsaved = false,
+  onToggleChatHistory,
+  chatHistoryOpen = false,
 }: TopBarProps) {
   return (
     <header className="topbar">
@@ -300,6 +308,26 @@ export default function TopBar({
               aria-label="Open prompt history"
             >
               History
+            </button>
+            <button
+              className={`ghost${chatHistoryOpen ? ' active' : ''}`}
+              type="button"
+              onClick={onToggleChatHistory}
+              disabled={!onToggleChatHistory}
+              aria-label="Toggle chat history sidebar"
+              title="Chat history"
+            >
+              📚 Chat
+            </button>
+            <button
+              className={`ghost${chatSessionUnsaved ? ' unsaved' : ''}`}
+              type="button"
+              onClick={onSaveChat}
+              disabled={!onSaveChat}
+              aria-label="Save current chat session"
+              title={chatSessionUnsaved ? 'Unsaved changes in chat' : 'Save current chat session'}
+            >
+              💾 {chatSessionUnsaved ? 'Save Chat' : 'Chat Saved'}
             </button>
           </div>
 

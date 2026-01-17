@@ -98,9 +98,7 @@ export default function Home() {
           <Link className="button" href="/wizard">
             Skip
           </Link>
-          <Link className="button muted-link" href="/legacy">
-            Legacy
-          </Link>
+
         </div>
 
         <label className="welcome-dontshow">

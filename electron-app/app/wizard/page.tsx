@@ -14,6 +14,10 @@ import { parseActions, getActionDescription, Action } from '../types/actions';
 import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
 import { Tooltip } from '../components/ui';
 import { getFieldTooltip } from '../utils/fieldTooltips';
+import { debounce } from '../utils/debounce';
+import ErrorBoundary from '../components/ErrorBoundary';
+import ChatHistoryManager, { ChatSession } from '../utils/ChatHistoryManager';
+import ChatHistorySidebar from '../components/ChatHistorySidebar';
 
 type OptionSets = Record<string, Record<string, string[]>>;
 
@@ -258,6 +262,7 @@ type UiPrefs = {
   autoFillCamera: boolean;
   previewFontScale: number;
   hideNsfw: boolean;
+  allowNsfwInChat: boolean;
 };
 
 type Project = {
@@ -370,6 +375,7 @@ const DEFAULT_UI_PREFS: UiPrefs = {
   autoFillCamera: true,
   previewFontScale: 1,
   hideNsfw: true,
+  allowNsfwInChat: false,
 };
 
 const MODES = [
@@ -1182,9 +1188,14 @@ export default function WizardPage() {
   const [batchCount, setBatchCount] = useState(3);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatMaximized, setChatMaximized] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp?: number}>>([]);
+  const [currentChatSessionId, setCurrentChatSessionId] = useState<string | null>(null);
+  const [chatSessionUnsaved, setChatSessionUnsaved] = useState(false);
+  const chatAutoSaveTimeoutRef = useRef<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatModel, setChatModel] = useState('');
+  const [chatAllowControl, setChatAllowControl] = useState(false);
   const [historyViewModalOpen, setHistoryViewModalOpen] = useState(false);
   const [historyViewModalText, setHistoryViewModalText] = useState('');
   const [chatSystemPrompt, setChatSystemPrompt] = useState(DEFAULT_CHAT_SYSTEM_PROMPT);
@@ -1195,6 +1206,7 @@ export default function WizardPage() {
   const [isResizingChatDock, setIsResizingChatDock] = useState(false);
   const chatResizeStartXRef = useRef<number | null>(null);
   const chatResizeStartWidthRef = useRef<number | null>(null);
+  const [chatHistorySidebarOpen, setChatHistorySidebarOpen] = useState(false);
   // Keyboard shortcuts modal state
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   // Unsaved changes indicator
@@ -1218,11 +1230,132 @@ export default function WizardPage() {
   const [actionPreviewRaw, setActionPreviewRaw] = useState('');
   const [actionPreviewDescriptions, setActionPreviewDescriptions] = useState<string[]>([]);
   const [actionPasteJson, setActionPasteJson] = useState('');
+  const [applyingActions, setApplyingActions] = useState(false);
   const actionApplyModeRef = useRef<ModeId>(mode);
   const didHydrateRef = useRef(false);
   const didHydrateOptionSetsRef = useRef(false);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+
+  // Debounced save functions for settings
+  const debouncedSaveOllamaSettings = useCallback(debounce(saveOllamaSettings, 500), []);
+  const debouncedSaveChatSettings = useCallback(debounce(saveChatSettings, 500), []);
+  const debouncedSaveUiPrefs = useCallback(debounce(saveUiPrefs, 500), []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'p':
+            e.preventDefault();
+            setPreviewOpen(!previewOpen);
+            break;
+          case 's':
+            e.preventDefault();
+            // Save current prompt to history
+            if (prompt.trim()) {
+              addToPromptHistory(prompt);
+              showToast('Prompt saved to history');
+            }
+            break;
+          case 'z':
+            if (e.shiftKey) {
+              // Redo
+              if (canRedo) {
+                setHistoryIndex(prev => prev + 1);
+                const state = historyStack[historyIndex + 1];
+                if (state) {
+                  setValues(state.values);
+                  setMode(state.mode);
+                  setStep(state.step);
+                  setCanUndo(true);
+                  setCanRedo(historyIndex + 1 < historyStack.length - 1);
+                }
+              }
+            } else {
+              // Undo
+              if (canUndo) {
+                setHistoryIndex(prev => prev - 1);
+                const state = historyStack[historyIndex - 1];
+                if (state) {
+                  setValues(state.values);
+                  setMode(state.mode);
+                  setStep(state.step);
+                  setCanRedo(true);
+                  setCanUndo(historyIndex - 1 > 0);
+                }
+              }
+            }
+            break;
+          case '1':
+            e.preventDefault();
+            setMode('cinematic');
+            break;
+          case '2':
+            e.preventDefault();
+            setMode('classic');
+            break;
+          case '3':
+            e.preventDefault();
+            setMode('drone');
+            break;
+          case '4':
+            e.preventDefault();
+            setMode('animation');
+            break;
+          case '5':
+            e.preventDefault();
+            setMode('photography');
+            break;
+          case '6':
+            e.preventDefault();
+            setMode('nsfw');
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewOpen, canUndo, canRedo, historyIndex, historyStack, setValues, setMode, setStep, setCanUndo, setCanRedo]);
+
+  // Auto-save chat messages to history
+  useEffect(() => {
+    if (!chatMessages.length || !currentChatSessionId) {
+      return;
+    }
+
+    // Clear existing timeout
+    if (chatAutoSaveTimeoutRef.current) {
+      clearTimeout(chatAutoSaveTimeoutRef.current);
+    }
+
+    // Set a new timeout to save after 500ms of inactivity
+    chatAutoSaveTimeoutRef.current = window.setTimeout(() => {
+      const session = ChatHistoryManager.getSession(currentChatSessionId);
+      if (session) {
+        const updatedSession: ChatSession = {
+          ...session,
+          messages: chatMessages.map(msg => ({
+            ...msg,
+            timestamp: msg.timestamp || Date.now()
+          }))
+        };
+        ChatHistoryManager.saveSession(updatedSession);
+        setChatSessionUnsaved(false);
+      }
+    }, 500);
+
+    setChatSessionUnsaved(true);
+
+    return () => {
+      if (chatAutoSaveTimeoutRef.current) {
+        clearTimeout(chatAutoSaveTimeoutRef.current);
+      }
+    };
+  }, [chatMessages, currentChatSessionId]);
+
   useEffect(() => {
     // Load persisted settings after mount to avoid SSR/CSR hydration mismatches.
     const loadedOptionSets = loadOptionSets();
@@ -1264,6 +1397,7 @@ export default function WizardPage() {
       if (typeof loadedChatSettings.chatDocked === 'boolean') setChatDocked(loadedChatSettings.chatDocked);
       if (typeof loadedChatSettings.chatDockWidth === 'number') setChatDockWidth(loadedChatSettings.chatDockWidth);
       if (typeof loadedChatSettings.chatSystemPrompt === 'string') setChatSystemPrompt(loadedChatSettings.chatSystemPrompt);
+      if (typeof loadedChatSettings.chatAllowControl === 'boolean') setChatAllowControl(loadedChatSettings.chatAllowControl);
     }
     // Load prompt history
     try {
@@ -1293,8 +1427,8 @@ export default function WizardPage() {
       didHydrateRef.current = true;
       return;
     }
-    saveUiPrefs(uiPrefs);
-  }, [uiPrefs]);
+    debouncedSaveUiPrefs(uiPrefs);
+  }, [uiPrefs, debouncedSaveUiPrefs]);
 
   useEffect(() => {
     if (projects.length === 0) return;
@@ -1315,32 +1449,38 @@ export default function WizardPage() {
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
-    saveOllamaSettings(ollamaSettings);
-  }, [ollamaSettings]);
+    debouncedSaveOllamaSettings(ollamaSettings);
+  }, [ollamaSettings, debouncedSaveOllamaSettings]);
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
     const prev = loadChatSettings() || {};
-    saveChatSettings({ ...prev, chatModel });
-  }, [chatModel]);
+    debouncedSaveChatSettings({ ...prev, chatModel });
+  }, [chatModel, debouncedSaveChatSettings]);
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
     const prev = loadChatSettings() || {};
-    saveChatSettings({ ...prev, chatDocked });
-  }, [chatDocked]);
+    debouncedSaveChatSettings({ ...prev, chatDocked });
+  }, [chatDocked, debouncedSaveChatSettings]);
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
     const prev = loadChatSettings() || {};
-    saveChatSettings({ ...prev, chatDockWidth });
-  }, [chatDockWidth]);
+    debouncedSaveChatSettings({ ...prev, chatDockWidth });
+  }, [chatDockWidth, debouncedSaveChatSettings]);
 
   useEffect(() => {
     if (!didHydrateRef.current) return;
     const prev = loadChatSettings() || {};
-    saveChatSettings({ ...prev, chatSystemPrompt });
-  }, [chatSystemPrompt]);
+    debouncedSaveChatSettings({ ...prev, chatSystemPrompt });
+  }, [chatSystemPrompt, debouncedSaveChatSettings]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    const prev = loadChatSettings() || {};
+    debouncedSaveChatSettings({ ...prev, chatAllowControl });
+  }, [chatAllowControl, debouncedSaveChatSettings]);
 
   useEffect(() => {
     // Auto-scroll to bottom when messages update
@@ -1551,6 +1691,8 @@ export default function WizardPage() {
         return;
       }
 
+      setApplyingActions(true);
+
       const modelToUse = chatModel || ollamaSettings.model;
       try {
         const systemSpec = `You are an assistant that outputs ONLY JSON for UI actions.\n\nTask: Given a creative prompt, produce a JSON ARRAY of actions to populate a wizard UI.\nSchema (strict):\n- setFieldValue { type: 'setFieldValue', field: string, value: string }\n- clearField { type: 'clearField', field: string }\n- bulkSetValues { type: 'bulkSetValues', entries: Record<string,string> }\n- setMode { type: 'setMode', value: 'cinematic'|'classic'|'drone'|'animation'|'photography'|'nsfw' }\n- setStep { type: 'setStep', value: number }\n- setEditorTone { type: 'setEditorTone', value: 'melancholic'|'balanced'|'energetic'|'dramatic' }\n- setNSFW { type: 'setNSFW', value: boolean }\n- togglePreview { type: 'togglePreview' }\n- openSettings { type: 'openSettings' }\n- updateUiPref { type: 'updateUiPref', key: string, value: any }\n- updateOllamaSetting { type: 'updateOllamaSetting', key: string, value: any }\n- setChatModel { type: 'setChatModel', value: string }\n- openChatSystemPrompt { type: 'openChatSystemPrompt' }\n- setChatMinimized { type: 'setChatMinimized', value: boolean }\n\nValid field names (must use exactly): ${ACTION_VALID_FIELDS.join(', ')}\n\nRules:\n- Output MUST be a valid JSON array. No markdown, no prose. No code fences.\n- Prefer bulkSetValues for multiple field updates.\n- Use only valid field names; do not invent new keys.\n- Do not include any wrapper besides the array.`;
@@ -1590,14 +1732,27 @@ export default function WizardPage() {
         setActionPreviewActions(normalized);
         setActionPreviewDescriptions(normalized.map(getActionDescription));
         setActionPreviewErrors(errors);
-        setActionPreviewOpen(true);
-        showToast(errors.length ? '⚠️ Review actions (some issues)' : 'Ready to apply actions');
+
+        if (chatAllowControl && errors.length === 0) {
+          // Auto-apply actions if control is enabled and no errors
+          await actionExecutor.execute(normalized, { skipErrors: true });
+          if (!actions.some((a) => a.type === 'setStep')) {
+            setStep(2);
+          }
+          showToast('Actions applied automatically');
+        } else {
+          // Show preview for manual review
+          setActionPreviewOpen(true);
+          showToast(errors.length ? '⚠️ Review actions (some issues)' : 'Ready to apply actions');
+        }
+        setApplyingActions(false);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         showToast(`❌ Apply failed: ${msg}`);
+        setApplyingActions(false);
       }
     },
-    [extractJsonPayload, normalizeActions, ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaSettings.model, chatModel, showToast]
+    [extractJsonPayload, normalizeActions, ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaSettings.model, chatModel, showToast, setApplyingActions]
   );
 
   const selects = useMemo(() => optionSets[mode] || {}, [optionSets, mode]);
@@ -2388,7 +2543,7 @@ export default function WizardPage() {
     }
     
     // Update chat messages before sending
-    const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage }];
+    const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage, timestamp: Date.now() }];
     setChatMessages(updatedMessages);
     setChatInput('');
     // Reset textarea height
@@ -2404,6 +2559,11 @@ export default function WizardPage() {
         modeContext = PHOTOGRAPHY_CONTEXT;
       }
 
+      // NSFW blocking unless explicitly requested or allowed in settings
+      const nsfwInstructions = uiPrefs.allowNsfwInChat
+        ? '\n\nNSFW CONTENT POLICY: You may generate, describe, or reference NSFW (not safe for work), adult, sexual, or explicit content when appropriate for the user\'s request.'
+        : '\n\nNSFW CONTENT POLICY: Do not generate, describe, or reference any NSFW (not safe for work), adult, sexual, or explicit content. Keep all responses family-friendly and appropriate.';
+
       const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2412,7 +2572,7 @@ export default function WizardPage() {
           messages: [
             {
               role: 'system',
-              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}${nsfwInstructions}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
             },
             ...updatedMessages,
           ],
@@ -2434,7 +2594,7 @@ export default function WizardPage() {
       const decoder = new TextDecoder();
       let accumulatedText = '';
 
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: '', timestamp: Date.now() }]);
 
       if (reader) {
         while (true) {
@@ -2451,7 +2611,7 @@ export default function WizardPage() {
                 accumulatedText += json.message.content;
                 setChatMessages((prev) => {
                   const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', content: accumulatedText };
+                  updated[updated.length - 1] = { role: 'assistant', content: accumulatedText, timestamp: updated[updated.length - 1].timestamp };
                   return updated;
                 });
               }
@@ -2471,6 +2631,58 @@ export default function WizardPage() {
       showToast(`Chat error: ${errorMsg}`);
     } finally {
       setChatSending(false);
+    }
+  };
+
+  // Chat history management
+  const saveCurrentChatSession = async () => {
+    if (!chatMessages.length) {
+      showToast('No messages to save');
+      return;
+    }
+
+    const sessionTitle = window.prompt(`Save chat as:`, `Chat ${new Date().toLocaleDateString()}`);
+    if (!sessionTitle) return;
+
+    const session = ChatHistoryManager.createSession(
+      sessionTitle,
+      mode as any,
+      chatModel || ollamaSettings.model,
+      chatMessages.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp || Date.now()
+      }))
+    );
+
+    if (ChatHistoryManager.saveSession(session)) {
+      setCurrentChatSessionId(session.id);
+      setChatSessionUnsaved(false);
+      showToast(`Chat saved: ${sessionTitle}`);
+    } else {
+      showToast('Failed to save chat');
+    }
+  };
+
+  const loadChatSession = (sessionId: string) => {
+    const session = ChatHistoryManager.getSession(sessionId);
+    if (session) {
+      setChatMessages(session.messages);
+      setCurrentChatSessionId(sessionId);
+      setChatSessionUnsaved(false);
+      setChatModel(session.model);
+      // Optionally set mode based on session
+      if (session.mode !== mode) {
+        setMode(session.mode);
+      }
+      showToast(`Loaded: ${session.title}`);
+    }
+  };
+
+  const clearCurrentChat = () => {
+    if (confirm('Clear current chat? This will not delete saved chats.')) {
+      setChatMessages([]);
+      setCurrentChatSessionId(null);
+      setChatSessionUnsaved(false);
     }
   };
 
@@ -2807,6 +3019,7 @@ export default function WizardPage() {
   };
 
   return (
+    <ErrorBoundary>
     <main className="wizard-shell">
       <TopBar
         step={step}
@@ -2850,6 +3063,10 @@ export default function WizardPage() {
         onRedo={performRedo}
         canUndo={canUndo}
         canRedo={canRedo}
+        onSaveChat={saveCurrentChatSession}
+        chatSessionUnsaved={chatSessionUnsaved}
+        onToggleChatHistory={() => setChatHistorySidebarOpen(!chatHistorySidebarOpen)}
+        chatHistoryOpen={chatHistorySidebarOpen}
       />
       <div className="topbar-spacer" aria-hidden="true" />
 
@@ -2977,6 +3194,12 @@ export default function WizardPage() {
         labelForMode={labelForMode}
         DEFAULT_OPTION_SETS={DEFAULT_OPTION_SETS}
         DEFAULT_OLLAMA_SETTINGS={DEFAULT_OLLAMA_SETTINGS}
+        chatAllowControl={chatAllowControl}
+        onChatAllowControlChange={setChatAllowControl}
+        chatModel={chatModel}
+        onSetChatModel={setChatModel}
+        chatSystemPrompt={chatSystemPrompt}
+        onSetChatSystemPrompt={setChatSystemPrompt}
       />
 
       {/* Templates Modal */}
@@ -3309,6 +3532,8 @@ export default function WizardPage() {
               setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
               chatMinimized={chatMinimized}
               setChatMinimized={setChatMinimized}
+              chatMaximized={chatMaximized}
+              setChatMaximized={setChatMaximized}
               chatSending={chatSending}
               ollamaSettings={ollamaSettings}
               ollamaAvailableModels={ollamaAvailableModels}
@@ -3319,6 +3544,7 @@ export default function WizardPage() {
               showToast={showToast}
               sendChatMessage={sendChatMessage}
               addToPromptHistory={addToPromptHistory}
+              applyingActions={applyingActions}
             />
             <div
               className="chat-resize-handle"
@@ -3330,6 +3556,13 @@ export default function WizardPage() {
               }}
             />
           </div>
+        )}
+        {chatHistorySidebarOpen && (
+          <ChatHistorySidebar
+            onSelectSession={(session) => loadChatSession(session.id)}
+            onNewChat={clearCurrentChat}
+            currentSessionId={currentChatSessionId ?? undefined}
+          />
         )}
         <section className="steps">
         <article className={`step ${step === 1 ? 'active' : ''}`}>
@@ -4571,6 +4804,8 @@ export default function WizardPage() {
           setChatSystemPromptModalOpen={setChatSystemPromptModalOpen}
           chatMinimized={chatMinimized}
           setChatMinimized={setChatMinimized}
+          chatMaximized={chatMaximized}
+          setChatMaximized={setChatMaximized}
           chatSending={chatSending}
           ollamaSettings={ollamaSettings}
           ollamaAvailableModels={ollamaAvailableModels}
@@ -4581,6 +4816,7 @@ export default function WizardPage() {
           showToast={showToast}
           sendChatMessage={sendChatMessage}
           addToPromptHistory={addToPromptHistory}
+          applyingActions={applyingActions}
         />
       )}
 
@@ -4615,6 +4851,7 @@ export default function WizardPage() {
         </div>
       )}
     </main>
+    </ErrorBoundary>
   );
 }
 
@@ -5811,7 +6048,7 @@ function saveOllamaSettings(settings: OllamaSettings) {
   }
 }
 
-function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string } | null {
+function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string; chatAllowControl?: boolean } | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = window.localStorage.getItem(CHAT_SETTINGS_STORAGE_KEY);
@@ -5822,7 +6059,7 @@ function loadChatSettings(): { chatModel?: string; chatDocked?: boolean; chatDoc
   }
 }
 
-function saveChatSettings(settings: { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string }) {
+function saveChatSettings(settings: { chatModel?: string; chatDocked?: boolean; chatDockWidth?: number; chatSystemPrompt?: string; chatAllowControl?: boolean }) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(CHAT_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -5897,6 +6134,7 @@ function loadUiPrefs(): UiPrefs | null {
       ? Math.min(1.25, Math.max(0.85, parsed.previewFontScale))
       : DEFAULT_UI_PREFS.previewFontScale;
     const hideNsfw = parsed.hideNsfw ?? DEFAULT_UI_PREFS.hideNsfw;
+    const allowNsfwInChat = parsed.allowNsfwInChat ?? DEFAULT_UI_PREFS.allowNsfwInChat;
     return {
       typingEnabled: parsed.typingEnabled !== false,
       typingSpeedMs: typeof parsed.typingSpeedMs === 'number' ? parsed.typingSpeedMs : 14,
@@ -5908,6 +6146,7 @@ function loadUiPrefs(): UiPrefs | null {
       autoFillCamera,
       previewFontScale,
       hideNsfw,
+      allowNsfwInChat,
     };
   } catch {
     return null;

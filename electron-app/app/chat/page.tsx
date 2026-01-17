@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatPanel from '../components/ChatPanel';
 import './popout.css';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 // Minimal popout chat page which forwards actions to the main window via IPC
 
@@ -14,8 +15,23 @@ type OllamaSettings = {
   temperature: number;
 };
 
+type UiPrefs = {
+  typingEnabled: boolean;
+  typingSpeedMs: number;
+  captureWord: 'shot' | 'video' | 'clip' | 'frame' | 'photo';
+  autoCopyOnReview: boolean;
+  promptFormat: 'ltx2' | 'paragraph';
+  detailLevel: 'minimal' | 'balanced' | 'rich';
+  autoFillAudio: boolean;
+  autoFillCamera: boolean;
+  previewFontScale: number;
+  hideNsfw: boolean;
+  allowNsfwInChat: boolean;
+};
+
 const OLLAMA_SETTINGS_STORAGE_KEY = 'ltx_prompter_ollama_settings_v1';
 const CHAT_SETTINGS_STORAGE_KEY = 'ltx_prompter_chat_settings_v1';
+const UI_PREFS_STORAGE_KEY = 'ltx_prompter_ui_prefs_v1';
 
 const DEFAULT_CHAT_SYSTEM_PROMPT = `You are a cinematic scene generator.
 
@@ -80,7 +96,7 @@ If the user provides minimal input, extrapolate intelligently while remaining re
 export default function ChatPopoutPage() {
   const [chatOpen, setChatOpen] = useState(true);
   const [chatMinimized, setChatMinimized] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp?: number}>>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatModel, setChatModel] = useState('');
   const [chatSystemPrompt, setChatSystemPrompt] = useState(DEFAULT_CHAT_SYSTEM_PROMPT);
@@ -94,6 +110,19 @@ export default function ChatPopoutPage() {
     temperature: 0.7,
   });
   const [ollamaAvailableModels, setOllamaAvailableModels] = useState<string[]>([]);
+  const [uiPrefs, setUiPrefs] = useState<UiPrefs>({
+    typingEnabled: false,
+    typingSpeedMs: 2,
+    captureWord: 'photo',
+    autoCopyOnReview: false,
+    promptFormat: 'paragraph',
+    detailLevel: 'rich',
+    autoFillAudio: true,
+    autoFillCamera: true,
+    previewFontScale: 1,
+    hideNsfw: true,
+    allowNsfwInChat: false,
+  });
 
   const prompt = '';
   const mode = 'cinematic';
@@ -112,6 +141,8 @@ export default function ChatPopoutPage() {
         if (parsed?.chatModel) setChatModel(parsed.chatModel);
         if (typeof parsed?.chatSystemPrompt === 'string') setChatSystemPrompt(parsed.chatSystemPrompt);
       }
+      const loadedUiPrefs = loadUiPrefs();
+      if (loadedUiPrefs) setUiPrefs(loadedUiPrefs);
     } catch {}
   }, []);
 
@@ -163,7 +194,7 @@ export default function ChatPopoutPage() {
     const userMessage = chatInput.trim();
     const modelToUse = chatModel || ollamaSettings.model;
 
-    const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage }];
+    const updatedMessages = [...chatMessages, { role: 'user' as const, content: userMessage, timestamp: Date.now() }];
     setChatMessages(updatedMessages);
     setChatInput('');
     if (chatInputRef.current) chatInputRef.current.style.height = 'auto';
@@ -231,7 +262,9 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
           messages: [
             {
               role: 'system',
-              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE}\n\n${LTX_CONTEXT}\n\n${ACTIONS_SPEC}`,
+              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE}\n\n${LTX_CONTEXT}\n\n${ACTIONS_SPEC}${uiPrefs.allowNsfwInChat
+                ? '\n\nNSFW CONTENT POLICY: You may generate, describe, or reference NSFW (not safe for work), adult, sexual, or explicit content when appropriate for the user\'s request.'
+                : '\n\nNSFW CONTENT POLICY: Do not generate, describe, or reference any NSFW (not safe for work), adult, sexual, or explicit content. Keep all responses family-friendly and appropriate.'}`,
             },
             ...updatedMessages,
           ],
@@ -249,7 +282,7 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
       const decoder = new TextDecoder();
       let accumulatedText = '';
 
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: '', timestamp: Date.now() }]);
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
@@ -263,7 +296,7 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
                 accumulatedText += json.message.content;
                 setChatMessages((prev) => {
                   const updated = [...prev];
-                  updated[updated.length - 1] = { role: 'assistant', content: accumulatedText };
+                  updated[updated.length - 1] = { role: 'assistant', content: accumulatedText, timestamp: updated[updated.length - 1].timestamp };
                   return updated;
                 });
               }
@@ -275,7 +308,7 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
       setTimeout(() => unloadOllamaModel(modelToUse), 1000);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to connect to Ollama';
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${errorMsg}` }]);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${errorMsg}`, timestamp: Date.now() }]);
       showToast(`Chat error: ${errorMsg}`);
     } finally {
       setChatSending(false);
@@ -283,6 +316,7 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
   };
 
   return (
+    <ErrorBoundary>
     <main className="chat-popout-shell">
       <div className="chat-popout-topbar">
         <button className="ghost" type="button" onClick={() => (window as any).electron?.windowControl?.openChatWindow?.()}>
@@ -325,5 +359,43 @@ Always keep normal prompt output in a \`\`\`prompt\`\`\` block; use \`\`\`action
         }}
       />
     </main>
+    </ErrorBoundary>
   );
+}
+
+function loadUiPrefs(): UiPrefs | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(UI_PREFS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<UiPrefs>;
+    const cw = parsed.captureWord;
+    const captureWord: 'shot' | 'video' | 'clip' | 'frame' | 'photo' = cw === 'video' || cw === 'clip' || cw === 'frame' || cw === 'photo' ? cw : 'shot';
+    const pf = parsed.promptFormat;
+    const promptFormat: 'ltx2' | 'paragraph' = pf === 'paragraph' ? 'paragraph' : 'ltx2';
+    const dl = parsed.detailLevel;
+    const detailLevel: 'minimal' | 'balanced' | 'rich' = dl === 'minimal' || dl === 'rich' ? dl : 'balanced';
+    const autoFillAudio = parsed.autoFillAudio ?? true;
+    const autoFillCamera = parsed.autoFillCamera ?? true;
+    const previewFontScale = typeof parsed.previewFontScale === 'number'
+      ? Math.min(1.25, Math.max(0.85, parsed.previewFontScale))
+      : 1;
+    const hideNsfw = parsed.hideNsfw ?? true;
+    const allowNsfwInChat = parsed.allowNsfwInChat ?? false;
+    return {
+      typingEnabled: parsed.typingEnabled !== false,
+      typingSpeedMs: typeof parsed.typingSpeedMs === 'number' ? parsed.typingSpeedMs : 14,
+      captureWord,
+      autoCopyOnReview: parsed.autoCopyOnReview === true,
+      promptFormat,
+      detailLevel,
+      autoFillAudio,
+      autoFillCamera,
+      previewFontScale,
+      hideNsfw,
+      allowNsfwInChat,
+    };
+  } catch {
+    return null;
+  }
 }

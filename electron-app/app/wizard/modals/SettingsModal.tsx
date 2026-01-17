@@ -13,6 +13,7 @@ type UiPrefs = {
   autoFillCamera: boolean;
   previewFontScale: number;
   hideNsfw: boolean;
+  allowNsfwInChat: boolean;
 };
 
 type ModeId = 'cinematic' | 'classic' | 'drone' | 'animation' | 'photography' | 'nsfw';
@@ -531,6 +532,22 @@ export default function SettingsModal({
               <div>
                 <div className="toggle-title">Allow chat to control UI</div>
                 <div className="toggle-note">Enables actions like changing mode, toggling preview, opening settings.</div>
+              </div>
+            </div>
+
+            <div className="settings-experience-row">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={uiPrefs.allowNsfwInChat}
+                  onChange={(e) => onUiPrefsChange({ ...uiPrefs, allowNsfwInChat: e.target.checked })}
+                  aria-label="Allow NSFW content in chat"
+                />
+                <span className="slider" />
+              </label>
+              <div>
+                <div className="toggle-title">Allow NSFW content in chat</div>
+                <div className="toggle-note">Permits adult content in chat responses.</div>
               </div>
             </div>
 

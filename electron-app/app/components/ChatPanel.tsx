@@ -5,6 +5,7 @@ import { useRef, useState, useEffect } from 'react';
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: number;
 }
 
 export interface ChatPanelProps {
@@ -22,6 +23,8 @@ export interface ChatPanelProps {
   setChatSystemPromptModalOpen: (open: boolean) => void;
   chatMinimized: boolean;
   setChatMinimized: (minimized: boolean) => void;
+  chatMaximized?: boolean;
+  setChatMaximized?: (maximized: boolean) => void;
   chatSending: boolean;
   // Optional flags and callbacks used by popout chat
   chatAllowControl?: boolean;
@@ -50,6 +53,7 @@ export interface ChatPanelProps {
   showToast: (message: string) => void;
   sendChatMessage: () => void;
   addToPromptHistory: (prompt: string) => void;
+  applyingActions?: boolean;
 }
 
 export default function ChatPanel({
@@ -67,6 +71,8 @@ export default function ChatPanel({
   setChatSystemPromptModalOpen,
   chatMinimized,
   setChatMinimized,
+  chatMaximized,
+  setChatMaximized,
   chatSending,
   onApplyPrompt,
   actionPreviewOpen,
@@ -88,6 +94,7 @@ export default function ChatPanel({
   showToast,
   sendChatMessage,
   addToPromptHistory,
+  applyingActions,
 }: ChatPanelProps) {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
@@ -136,7 +143,7 @@ export default function ChatPanel({
   return (
     <>
       {/* Chat Panel */}
-      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''} ${docked ? 'docked' : ''}`}>
+      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''} ${docked ? 'docked' : ''} ${chatMaximized ? 'maximized' : ''}`}>
         <div className="chat-header">
           <div className="chat-header-left">
             <div className="chat-title-block">
@@ -163,7 +170,7 @@ export default function ChatPanel({
             )}
           </div>
           <div className="chat-header-actions">
-            {onToggleDock && (
+            {onToggleDock && !chatMaximized && (
               <button
                 className="ghost small"
                 type="button"
@@ -172,6 +179,20 @@ export default function ChatPanel({
                 aria-label={docked ? 'Undock chat' : 'Dock chat'}
               >
                 {docked ? 'Float' : 'Dock'}
+              </button>
+            )}
+            {!docked && setChatMaximized && (
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  setChatMaximized(!chatMaximized);
+                  if (chatMinimized) setChatMinimized(false);
+                }}
+                title={chatMaximized ? 'Restore to window' : 'Maximize to fullscreen'}
+                aria-label={chatMaximized ? 'Restore chat' : 'Maximize chat'}
+              >
+                {chatMaximized ? '🗗' : '🗖'}
               </button>
             )}
             <button
@@ -327,7 +348,10 @@ Please review this context and let me know how I can optimize my prompts for the
                     <div className="chat-message-row">
                       <div className="chat-avatar" aria-hidden>{msg.role === 'user' ? 'Y' : 'N'}</div>
                       <div className="chat-message-body">
-                        <div className="chat-message-role">{msg.role === 'user' ? 'You' : 'Nicole'}</div>
+                        <div className="chat-message-role">
+                          {msg.role === 'user' ? 'You' : 'Nicole'}
+                          {msg.timestamp && <span className="chat-timestamp">{new Date(msg.timestamp).toLocaleTimeString()}</span>}
+                        </div>
                         <div className="chat-message-content">
                           {parts.map((part, i) => {
                             if (part.type === 'code') {
@@ -391,8 +415,9 @@ Please review this context and let me know how I can optimize my prompts for the
                                             }
                                           }}
                                           title="Apply this prompt to the UI via actions"
+                                          disabled={applyingActions}
                                         >
-                                          Apply
+                                          {applyingActions ? 'Applying...' : 'Apply'}
                                         </button>
                                       )}
                                     </div>
