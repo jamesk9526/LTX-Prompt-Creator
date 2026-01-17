@@ -36,6 +36,7 @@ A friendly, guided prompt wizard for video and creative production. Create profe
    - Enable/disable Ollama AI features
    - Set model and endpoint
    - Adjust preferences
+<img width="1410" height="894" alt="Screenshot 2026-01-16 230548" src="https://github.com/user-attachments/assets/61d4ae70-1869-4480-a260-4d2d7d79469a" />
 
 2. **Create Your First Project**
    - Click "Projects" button
@@ -97,6 +98,8 @@ Output in `electron-app/release/`:
 - UI control via natural language
 - Action execution (update fields, navigate steps)
 - NSFW content filtering
+<img width="1044" height="944" alt="Screenshot 2026-01-11 013950" src="https://github.com/user-attachments/assets/e1db44fb-2187-4a4f-b024-3e9e5e986172" />
+<img width="590" height="82" alt="Screenshot 2026-01-16 230640" src="https://github.com/user-attachments/assets/cb0743f3-9b14-4080-b083-5db6fbb4988e" />
 
 ### Advanced Features
 - **Virtualized Chat**: High-performance rendering for 1000+ messages
@@ -105,6 +108,7 @@ Output in `electron-app/release/`:
 - **Error Boundaries**: Graceful error handling
 - **Auto-save**: Automatic chat session persistence
 - **Dark Theme**: Professional dark UI
+<img width="590" height="82" alt="Screenshot 2026-01-16 230640" src="https://github.com/user-attachments/assets/419ff485-f0b1-4351-ade6-63b75b43954d" />
 
 ---
 
@@ -117,6 +121,7 @@ Output in `electron-app/release/`:
 - **Styling**: CSS Modules + Global CSS
 - **State**: React Hooks + Local Storage
 - **IPC**: Electron IPC for main/renderer communication
+<img width="1392" height="870" alt="Screenshot 2026-01-16 230658" src="https://github.com/user-attachments/assets/c879df01-5148-4915-b08a-3bc6f74fc85a" />
 
 ### Key Components
 
