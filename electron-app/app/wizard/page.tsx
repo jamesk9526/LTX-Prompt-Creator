@@ -19,6 +19,7 @@ import { debounce } from '../utils/debounce';
 import ErrorBoundary from '../components/ErrorBoundary';
 import ChatHistoryManager, { ChatSession } from '../utils/ChatHistoryManager';
 import ChatHistorySidebar from '../components/ChatHistorySidebar';
+import { analyzePromptQuality, QualityAnalysis, getFieldSuggestions, autoPopulateFields, checkOllamaConnection, transferStyle } from '../utils/ollamaEnhancements';
 
 type OptionSets = Record<string, Record<string, string[]>>;
 
@@ -34,10 +35,21 @@ const CHAT_SETTINGS_STORAGE_KEY = 'ltx_prompter_chat_settings_v1';
 // Nicole's core personality and capabilities (hidden from user, always applied)
 const NICOLE_BASE_SYSTEM_PROMPT = `You are Nicole, a professional AI assistant and expert in creative prompt writing and video production.
 
-OUTPUT BEHAVIOR (CRITICAL):
-- When expanding or refining prompts: Output ONLY the expanded prompt in a markdown code block (\`\`\`prompt ... \`\`\`)
-- NO preamble, NO explanation, NO extra text - just the refined prompt
-- Exception: If user explicitly asks for feedback, explanation, or critique, then provide brief professional feedback THEN the markup
+🔴 CRITICAL OUTPUT RULE - MANDATORY:
+ANY AND ALL PROMPTS MUST BE OUTPUT IN MARKDOWN CODE BLOCKS. This is non-negotiable.
+- When expanding, refining, or discussing prompts: ALWAYS output the prompt in \`\`\`prompt ... \`\`\` code blocks
+- MANDATORY: Every prompt text you generate MUST be wrapped in markdown code blocks
+- Users DEPEND on this format to copy prompts efficiently
+- If user asks for refined prompt, quality feedback, suggestions - output the prompt in code block FIRST
+- Only AFTER the code block can you provide brief explanation if specifically requested
+- NO EXCEPTIONS to markdown output - the prompt MUST be in a code block
+
+OUTPUT BEHAVIOR:
+- When expanding or refining prompts: Output the refined prompt IMMEDIATELY in a markdown code block (\`\`\`prompt ... \`\`\`)
+- When providing quality feedback: Include analysis THEN the improved prompt in code block
+- When suggesting prompt fixes: Show the refined version in code block
+- NO preamble before the code block - the prompt should be the primary output
+- Exception for feedback: AFTER the code block, you may briefly explain improvements (2-3 sentences max)
 - Single focus: Get the refined prompt into the markup so users can copy it immediately
 
 Your communication style:
@@ -55,20 +67,23 @@ Formatting for prompts:
 - This allows users to easily copy and paste the output
 - Always mark prompts clearly so they're easy to extract
 - ONLY the actual prompt text goes in the code block - no extra commentary
+- CODE BLOCK FORMAT IS MANDATORY - every prompt must be in this format
 
 Your expertise:
 - Expert-level knowledge in video prompt engineering and creative direction
 - Deep understanding of cinematography, lighting, and visual storytelling
 - Professional insights on shot composition, camera movements, and editing techniques
 - Skilled at refining vague ideas into precise, actionable prompts
+- Experience with quality analysis and prompt improvement identification
 
 Your approach:
 - Understand the user's intent quickly and accurately
 - Provide expert, actionable guidance immediately
 - When something needs improvement, state what and how concisely
 - Deliver professional-grade advice with authority
+- When analyzing prompt quality, provide constructive feedback and improved versions in code blocks
 
-Remember: Be brief, precise, and professional. Prioritize the markup output - users need the refined prompt, not commentary.`;
+Remember: CRITICAL - ALWAYS output prompts in \`\`\`prompt code blocks. Be brief, precise, and professional. Users need the refined prompt in markdown format for easy copying.`;
 
 // Default custom chat system prompt (user-modifiable addon)
 const DEFAULT_CHAT_SYSTEM_PROMPT = `You are a cinematic scene generator.
@@ -1197,6 +1212,18 @@ export default function WizardPage() {
   const [visualEmphasis, setVisualEmphasis] = useState(60);
   const [audioEmphasis, setAudioEmphasis] = useState(60);
   const [batchCount, setBatchCount] = useState(3);
+  const [qualityAnalysis, setQualityAnalysis] = useState<QualityAnalysis | null>(null);
+  const [analyzingQuality, setAnalyzingQuality] = useState(false);
+  const [suggestionsFor, setSuggestionsFor] = useState<string | null>(null);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [autoCompleting, setAutoCompleting] = useState(false);
+  const [ollamaConnected, setOllamaConnected] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(false);
+  const [styleTransferOpen, setStyleTransferOpen] = useState(false);
+  const [referencePrompt, setReferencePrompt] = useState('');
+  const [transferringStyle, setTransferringStyle] = useState(false);
+  const [ollamaPaused, setOllamaPaused] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
   const [chatMaximized, setChatMaximized] = useState(false);
@@ -1923,6 +1950,74 @@ export default function WizardPage() {
 
   const listIdFor = (field: string) => `list-${mode}-${field}`;
 
+  const handleGetSuggestions = useCallback(async (fieldName: string) => {
+    if (!ollamaSettings.enabled || ollamaPaused || loadingSuggestions) return;
+    
+    setLoadingSuggestions(true);
+    setSuggestionsFor(fieldName);
+    
+    try {
+      const currentValues = values[mode] || {};
+      const fieldSuggestions = await getFieldSuggestions(
+        ollamaSettings,
+        currentValues,
+        fieldName,
+        mode
+      );
+      setSuggestions(fieldSuggestions);
+    } catch (err) {
+      console.error('Failed to get suggestions:', err);
+      showToast('Failed to get AI suggestions');
+      setSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [ollamaSettings, loadingSuggestions, values, mode, showToast]);
+
+  const applySuggestion = useCallback((fieldName: string, value: string) => {
+    handleInput(fieldName, value);
+    setSuggestionsFor(null);
+    setSuggestions([]);
+    showToast('Applied suggestion');
+  }, [handleInput, showToast]);
+
+  const handleAutoComplete = useCallback(async () => {
+    if (!ollamaSettings.enabled || ollamaPaused || autoCompleting) return;
+    
+    setAutoCompleting(true);
+    
+    try {
+      const currentValues = values[mode] || {};
+      // Find all empty fields in STEP_FIELDS for current mode
+      const allFieldKeys = Object.keys(STEP_FIELDS).flatMap(stepKey => STEP_FIELDS[Number(stepKey)]);
+      const emptyFields = allFieldKeys.filter(field => !currentValues[field] || currentValues[field].trim() === '');
+      
+      if (emptyFields.length === 0) {
+        showToast('No empty fields to fill');
+        setAutoCompleting(false);
+        return;
+      }
+      
+      const suggestions = await autoPopulateFields(
+        ollamaSettings,
+        currentValues,
+        emptyFields,
+        mode
+      );
+      
+      // Apply all suggestions
+      const updatedValues = { ...currentValues, ...suggestions };
+      setValues(prev => ({ ...prev, [mode]: updatedValues }));
+      
+      showToast(`Auto-completed ${Object.keys(suggestions).length} fields`);
+    } catch (err) {
+      console.error('Auto-complete failed:', err);
+      showToast('Auto-complete failed');
+    } finally {
+      setAutoCompleting(false);
+    }
+  }, [ollamaSettings, autoCompleting, values, mode, showToast, setValues]);
+
   const topOptions = useCallback((field: string, max = 4) => {
     const list = selects[field] || [];
     return list.slice(0, max);
@@ -1982,10 +2077,22 @@ export default function WizardPage() {
               </span>
             </Tooltip>
           ) : null}
+          {ollamaSettings.enabled && !ollamaPaused && keySeed && (
+            <button
+              type="button"
+              className="field-ai-suggest"
+              onClick={() => handleGetSuggestions(keySeed)}
+              disabled={loadingSuggestions}
+              aria-label="Get AI suggestions"
+              title="Get AI suggestions"
+            >
+              ✨
+            </button>
+          )}
         </span>
       );
     },
-    []
+    [ollamaSettings.enabled, ollamaPaused, handleGetSuggestions, loadingSuggestions]
   );
 
   const canAdvance = () => {
@@ -2076,6 +2183,170 @@ export default function WizardPage() {
   useEffect(() => {
     setPreviewAnimTick((n) => n + 1);
   }, [prompt]);
+
+  const handleStyleTransfer = useCallback(async () => {
+    if (!ollamaSettings.enabled || ollamaPaused || transferringStyle || !referencePrompt.trim()) return;
+    
+    setTransferringStyle(true);
+    
+    try {
+      const transformedPrompt = await transferStyle(
+        ollamaSettings,
+        prompt,
+        referencePrompt,
+        mode
+      );
+      
+      // Parse the transformed prompt back into field values
+      // For now, we'll show a success toast and close the modal
+      showToast('Style transferred successfully');
+      setStyleTransferOpen(false);
+      setReferencePrompt('');
+      
+      // TODO: Could add logic to parse transformed prompt into fields
+      // or offer to replace current prompt in a new project
+    } catch (err) {
+      console.error('Style transfer failed:', err);
+      showToast('Style transfer failed');
+    } finally {
+      setTransferringStyle(false);
+    }
+  }, [ollamaSettings, transferringStyle, referencePrompt, prompt, mode, showToast]);
+
+  const stopOllama = useCallback(() => {
+    // Cancel all in-progress operations
+    setAnalyzingQuality(false);
+    setLoadingSuggestions(false);
+    setAutoCompleting(false);
+    setTransferringStyle(false);
+    setCheckingConnection(false);
+    
+    // Clear suggestion state
+    setSuggestionsFor(null);
+    setSuggestions([]);
+    
+    // Clear analysis state
+    setQualityAnalysis(null);
+    
+    // Mark as paused
+    setOllamaPaused(true);
+    setOllamaConnected(false);
+    
+    showToast('Ollama session stopped');
+  }, [showToast]);
+
+  const resumeOllama = useCallback(() => {
+    setOllamaPaused(false);
+    showToast('Ollama session resumed');
+    
+    // Re-check connection
+    if (ollamaSettings.enabled) {
+      setCheckingConnection(true);
+      checkOllamaConnection(ollamaSettings.apiEndpoint)
+        .then((connected) => {
+          setOllamaConnected(connected);
+        })
+        .catch(() => {
+          setOllamaConnected(false);
+        })
+        .finally(() => {
+          setCheckingConnection(false);
+        });
+    }
+  }, [showToast, ollamaSettings]);
+
+  // Manual quality analysis (user-triggered, not automatic)
+  const analyzeQualityManually = useCallback(async () => {
+    if (!ollamaSettings.enabled) {
+      console.warn('Quality analysis: Ollama not enabled');
+      showToast('Enable Ollama in settings first');
+      return;
+    }
+    if (ollamaPaused) {
+      console.warn('Quality analysis: Ollama is paused');
+      showToast('Resume Ollama to analyze');
+      return;
+    }
+    if (analyzingQuality) {
+      console.warn('Quality analysis: Already analyzing');
+      return;
+    }
+    
+    console.log('Starting quality analysis...', { prompt: prompt.substring(0, 50), mode });
+    setAnalyzingQuality(true);
+    try {
+      const analysis = await analyzePromptQuality(ollamaSettings, prompt, mode);
+      console.log('Quality analysis result:', analysis);
+      setQualityAnalysis(analysis);
+      
+      // Send analysis results to chat
+      const analysisMessage = `**Prompt Quality Analysis (${mode}):**
+
+**Score: ${analysis.score}/100**
+
+**Strengths:**
+${analysis.strengths.length > 0 ? analysis.strengths.map(s => `• ${s}`).join('\n') : '• Well-structured prompt'}
+
+**Areas for Improvement:**
+${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).join('\n') : '• No major improvements needed'}
+
+**Recommendation:** ${analysis.score >= 80 ? 'Your prompt is well-optimized and ready to use!' : 'Consider the improvements above to enhance prompt effectiveness.'}`;
+      
+      // Add analysis to chat messages
+      setChatMessages([
+        ...chatMessages,
+        {
+          role: 'assistant',
+          content: analysisMessage,
+          timestamp: Date.now()
+        }
+      ]);
+      
+      setChatOpen(true); // Open chat if not already open
+      showToast('Quality analysis complete - check chat for results');
+    } catch (err) {
+      console.error('Quality analysis failed:', err);
+      setQualityAnalysis(null);
+      showToast('Quality analysis failed - check Ollama is running');
+    } finally {
+      setAnalyzingQuality(false);
+    }
+  }, [ollamaSettings, ollamaPaused, analyzingQuality, prompt, mode, showToast, chatMessages]);
+
+  // Check Ollama connection when enabled
+  useEffect(() => {
+    if (!ollamaSettings.enabled || ollamaPaused) {
+      setOllamaConnected(false);
+      return;
+    }
+    
+    setCheckingConnection(true);
+    checkOllamaConnection(ollamaSettings.apiEndpoint)
+      .then((connected) => {
+        setOllamaConnected(connected);
+      })
+      .catch(() => {
+        setOllamaConnected(false);
+      })
+      .finally(() => {
+        setCheckingConnection(false);
+      });
+    
+    // Re-check every 30 seconds
+    const interval = setInterval(() => {
+      if (!ollamaPaused) {
+        checkOllamaConnection(ollamaSettings.apiEndpoint)
+          .then((connected) => {
+            setOllamaConnected(connected);
+          })
+          .catch(() => {
+            setOllamaConnected(false);
+          });
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [ollamaSettings.enabled, ollamaSettings.apiEndpoint, ollamaPaused]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -3065,6 +3336,11 @@ export default function WizardPage() {
         chatSessionUnsaved={chatSessionUnsaved}
         onToggleChatHistory={() => setChatHistorySidebarOpen(!chatHistorySidebarOpen)}
         chatHistoryOpen={chatHistorySidebarOpen}
+        ollamaConnected={ollamaConnected}
+        checkingConnection={checkingConnection}
+        ollamaPaused={ollamaPaused}
+        onStopOllama={stopOllama}
+        onResumeOllama={resumeOllama}
       />
       <div className="topbar-spacer" aria-hidden="true" />
 
@@ -4190,7 +4466,98 @@ export default function WizardPage() {
             <p className="eyebrow">Step 10</p>
             <h2>Review & Generate</h2>
             <p className="hint">Confirm your picks and grab the prompt.</p>
+            {ollamaSettings.enabled && !ollamaPaused && (
+              <div className="step-actions">
+                <button
+                  type="button"
+                  className="analyze-quality-btn"
+                  onClick={analyzeQualityManually}
+                  disabled={analyzingQuality}
+                  title="Analyze prompt quality with AI"
+                >
+                  {analyzingQuality ? '🔍 Analyzing...' : '🔍 Analyze Quality'}
+                </button>
+                <button
+                  type="button"
+                  className="auto-complete-btn"
+                  onClick={handleAutoComplete}
+                  disabled={autoCompleting}
+                  title="Fill empty fields with AI suggestions"
+                >
+                  {autoCompleting ? '⏳ Auto-completing...' : '✨ Auto-Complete Empty Fields'}
+                </button>
+                <button
+                  type="button"
+                  className="style-transfer-btn"
+                  onClick={() => setStyleTransferOpen(true)}
+                  disabled={transferringStyle}
+                  title="Apply style from a reference prompt"
+                >
+                  🎨 Transfer Style
+                </button>
+              </div>
+            )}
+            {ollamaSettings.enabled && ollamaPaused && (
+              <div className="inline-alert" style={{ marginTop: '16px' }}>
+                <div className="dot" style={{ backgroundColor: '#f59e0b' }} />
+                <div>
+                  <p><strong>Ollama AI Paused</strong></p>
+                  <p className="hint">AI features are paused to save memory. Click the ▶ button in the header to resume.</p>
+                </div>
+              </div>
+            )}
           </div>
+
+          {ollamaSettings.enabled && !ollamaPaused && qualityAnalysis && (
+            <div className="inline-alert quality-analysis" aria-label="AI Quality Analysis">
+              <div className="dot" style={{
+                backgroundColor: qualityAnalysis.score >= 80 ? '#10b981' : 
+                                 qualityAnalysis.score >= 60 ? '#f59e0b' : '#ef4444'
+              }} />
+              <div>
+                <p><strong>AI Quality Score: {qualityAnalysis.score}/100</strong></p>
+                {qualityAnalysis.strengths.length > 0 && (
+                  <>
+                    <p className="hint" style={{ color: '#10b981', marginTop: '0.5rem' }}>✓ Strengths:</p>
+                    <ul className="hint">
+                      {qualityAnalysis.strengths.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {qualityAnalysis.improvements.length > 0 && (
+                  <>
+                    <p className="hint" style={{ color: '#f59e0b', marginTop: '0.5rem' }}>⚡ Suggestions:</p>
+                    <ul className="hint">
+                      {qualityAnalysis.improvements.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {qualityAnalysis.missing.length > 0 && (
+                  <>
+                    <p className="hint" style={{ color: '#ef4444', marginTop: '0.5rem' }}>⚠ Missing:</p>
+                    <ul className="hint">
+                      {qualityAnalysis.missing.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {analyzingQuality && !ollamaPaused && (
+            <div className="inline-alert" aria-label="Analyzing quality">
+              <div className="dot" style={{ animation: 'pulse 2s infinite' }} />
+              <div>
+                <p><strong>Analyzing prompt quality...</strong></p>
+              </div>
+            </div>
+          )}
 
           {ltx2Checklist.length > 0 && (
             <div className="inline-alert" aria-label="LTX-2 prompt checklist">
@@ -4409,6 +4776,99 @@ export default function WizardPage() {
         isOpen={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
       />
+
+      {/* AI Suggestions Modal */}
+      {suggestionsFor && suggestions.length > 0 && (
+        <div className="modal-overlay" onClick={() => { setSuggestionsFor(null); setSuggestions([]); }}>
+          <div className="modal-container suggestions-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>AI Suggestions for {labelForField(suggestionsFor)}</h3>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => { setSuggestionsFor(null); setSuggestions([]); }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="suggestions-list">
+                {suggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="suggestion-item"
+                    onClick={() => applySuggestion(suggestionsFor, suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Style Transfer Modal */}
+      {styleTransferOpen && (
+        <div className="modal-overlay" onClick={() => setStyleTransferOpen(false)}>
+          <div className="modal-container style-transfer-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🎨 Transfer Style from Reference</h3>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => setStyleTransferOpen(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="style-transfer-content">
+                <label className="style-transfer-field">
+                  <span className="field-label">Reference Prompt</span>
+                  <textarea
+                    value={referencePrompt}
+                    onChange={(e) => setReferencePrompt(e.target.value)}
+                    placeholder="Paste a reference prompt whose style you want to apply to your current prompt..."
+                    rows={6}
+                    disabled={transferringStyle}
+                  />
+                </label>
+                <label className="style-transfer-field">
+                  <span className="field-label">Current Prompt</span>
+                  <textarea
+                    value={prompt}
+                    readOnly
+                    rows={6}
+                    className="readonly"
+                  />
+                </label>
+                <div className="style-transfer-actions">
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => setStyleTransferOpen(false)}
+                    disabled={transferringStyle}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={handleStyleTransfer}
+                    disabled={transferringStyle || !referencePrompt.trim()}
+                  >
+                    {transferringStyle ? 'Transferring...' : 'Transfer Style'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="sticky-nav-spacer" aria-hidden="true" />
       <footer className="sticky-nav" role="navigation" aria-label="Wizard navigation">

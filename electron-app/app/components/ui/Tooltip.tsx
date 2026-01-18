@@ -23,7 +23,10 @@ export const Tooltip: React.FC<TooltipProps> = ({
 
   const showTooltip = (e: React.MouseEvent) => {
     timeoutRef.current = setTimeout(() => {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const element = e.currentTarget as HTMLElement;
+      if (!element) return; // Guard against null element
+      
+      const rect = element.getBoundingClientRect();
       setCoords({
         x: rect.left + rect.width / 2,
         y: rect.top,

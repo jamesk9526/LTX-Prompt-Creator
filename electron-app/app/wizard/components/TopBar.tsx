@@ -64,6 +64,11 @@ interface TopBarProps {
   chatSessionUnsaved?: boolean;
   onToggleChatHistory?: () => void;
   chatHistoryOpen?: boolean;
+  ollamaConnected?: boolean;
+  checkingConnection?: boolean;
+  ollamaPaused?: boolean;
+  onStopOllama?: () => void;
+  onResumeOllama?: () => void;
 }
 
 export default function TopBar({
@@ -104,6 +109,11 @@ export default function TopBar({
   chatSessionUnsaved = false,
   onToggleChatHistory,
   chatHistoryOpen = false,
+  ollamaConnected = false,
+  checkingConnection = false,
+  ollamaPaused = false,
+  onStopOllama,
+  onResumeOllama,
 }: TopBarProps) {
   return (
     <header className="topbar">
@@ -114,6 +124,36 @@ export default function TopBar({
             {hasUnsavedChanges && (
               <span className="unsaved-dot" title="Unsaved changes" aria-label="Unsaved changes">●</span>
             )}
+            {ollamaSettings.enabled && (
+              <span 
+                className={`ollama-status ${checkingConnection ? 'checking' : ollamaConnected ? 'connected' : 'disconnected'}`}
+                title={checkingConnection ? 'Checking Ollama connection...' : ollamaConnected ? 'Ollama connected' : 'Ollama disconnected'}
+                aria-label={checkingConnection ? 'Checking connection' : ollamaConnected ? 'Connected' : 'Disconnected'}
+              >
+                {checkingConnection ? '○' : ollamaConnected ? '●' : '○'}
+              </span>
+            )}
+            {ollamaSettings.enabled && (ollamaPaused ? (
+              <button
+                type="button"
+                className="ollama-control-btn resume"
+                onClick={onResumeOllama}
+                title="Resume Ollama AI features"
+                aria-label="Resume Ollama"
+              >
+                ▶
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ollama-control-btn stop"
+                onClick={onStopOllama}
+                title="Stop Ollama and free memory"
+                aria-label="Stop Ollama"
+              >
+                ■
+              </button>
+            ))}
           </div>
           <div className="completion-indicator">
             {completedSteps.size} / {steps.length} steps complete

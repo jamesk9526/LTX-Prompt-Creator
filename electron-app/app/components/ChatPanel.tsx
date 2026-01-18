@@ -54,6 +54,9 @@ export interface ChatPanelProps {
   sendChatMessage: () => void;
   addToPromptHistory: (prompt: string) => void;
   applyingActions?: boolean;
+  // Analyze Quality feature
+  onAnalyzeQuality?: () => Promise<void>;
+  analyzingQuality?: boolean;
 }
 
 export default function ChatPanel({
@@ -95,6 +98,8 @@ export default function ChatPanel({
   sendChatMessage,
   addToPromptHistory,
   applyingActions,
+  onAnalyzeQuality,
+  analyzingQuality,
 }: ChatPanelProps) {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
