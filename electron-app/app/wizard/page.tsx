@@ -85,6 +85,38 @@ Your approach:
 
 Remember: CRITICAL - ALWAYS output prompts in \`\`\`prompt code blocks. Be brief, precise, and professional. Users need the refined prompt in markdown format for easy copying.`;
 
+// Mode-specific system prompts for specialized chat modes
+const CHAT_MODE_PROMPTS = {
+  ltx: `You are an expert LTX Video prompt creator generation prompt engineer. Focus on:
+- Cinematic camera movements and shot composition
+- Temporal coherence and motion descriptions
+- Lighting and atmosphere for video
+- Scene progression and narrative flow
+- Technical video generation parameters (fps, duration, motion intensity)
+
+Output all refined prompts in \`\`\`prompt code blocks.`,
+
+  flux: `You are an expert Flux image generation prompt engineer. Focus on:
+- Detailed visual composition and framing
+- Precise color, lighting, and material descriptions
+- Artistic styles and rendering techniques
+- High-quality photorealistic or artistic outputs
+- Negative prompts for Flux models
+
+Output all refined prompts in \`\`\`prompt code blocks.`,
+
+  sd: `You are an expert Stable Diffusion prompt engineer. Focus on:
+- Keyword-based prompt structure
+- Weight modifiers and emphasis syntax
+- Negative prompts to avoid artifacts
+- Art styles, artists, and aesthetic descriptors
+- Quality tags (masterpiece, best quality, highly detailed)
+
+Output all refined prompts in \`\`\`prompt code blocks.`,
+
+  general: NICOLE_BASE_SYSTEM_PROMPT
+};
+
 // Default custom chat system prompt (user-modifiable addon)
 const DEFAULT_CHAT_SYSTEM_PROMPT = `You are a cinematic scene generator.
 
@@ -146,8 +178,8 @@ STYLE GUIDELINES:
 If the user provides a prompt, reinterpret it using this structure.
 If the user provides minimal input, extrapolate intelligently while remaining realistic.`;
 
-// LTX Video Model Context
-const LTX_CONTEXT = `LTX VIDEO MODEL INFORMATION:
+// LTX Video prompt creator Model Context
+const LTX_CONTEXT = `LTX VIDEO PROMPT CREATOR MODEL INFORMATION:
 LTX is a state-of-the-art text-to-video generation model optimized for professional video creation. It excels at:
 
 Strengths:
@@ -1233,6 +1265,7 @@ export default function WizardPage() {
   const chatAutoSaveTimeoutRef = useRef<number | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatModel, setChatModel] = useState('');
+  const [chatMode, setChatMode] = useState('ltx'); // ltx, flux, sd, general
   const [chatAllowControl, setChatAllowControl] = useState(false);
   const [historyViewModalOpen, setHistoryViewModalOpen] = useState(false);
   const [historyViewModalText, setHistoryViewModalText] = useState('');
@@ -1561,13 +1594,13 @@ export default function WizardPage() {
       case 'photography':
         return `${basePrompt} Focus on professional photography prompts for Stable Diffusion and Flux Dev. Include technical camera settings (aperture, ISO, shutter speed), lighting setup, composition techniques, lens specifications, and color grading style. Use realistic photography language with technical precision. Perfect for portraits, products, landscapes, macro, and commercial photography.`;
       case 'cinematic':
-        return `${basePrompt} Focus on cinematic video prompts for the LTX Video model. Create detailed prompts with specific shot descriptions, camera movements, lighting with technical accuracy, integrated audio elements, and character performances.`;
+        return `${basePrompt} Focus on cinematic video prompts for the LTX Video prompt creator model. Create detailed prompts with specific shot descriptions, camera movements, lighting with technical accuracy, integrated audio elements, and character performances.`;
       case 'drone':
-        return `${basePrompt} Focus on aerial and landscape video prompts for the LTX Video model. Emphasize panoramic composition, drone movements, landscape features, environmental storytelling, and atmospheric conditions.`;
+        return `${basePrompt} Focus on aerial and landscape video prompts for the LTX Video prompt creator model. Emphasize panoramic composition, drone movements, landscape features, environmental storytelling, and atmospheric conditions.`;
       case 'animation':
-        return `${basePrompt} Focus on animation prompts for the LTX Video model. Include stylization details, character animation qualities, exaggerated or stylized movements, and animation-specific visual language.`;
+        return `${basePrompt} Focus on animation prompts for the LTX Video prompt creator model. Include stylization details, character animation qualities, exaggerated or stylized movements, and animation-specific visual language.`;
       case 'classic':
-        return `${basePrompt} Focus on general, versatile prompts for the LTX Video model. Create balanced descriptions suitable for any scene type with cohesive visual direction.`;
+        return `${basePrompt} Focus on general, versatile prompts for the LTX Video prompt creator model. Create balanced descriptions suitable for any scene type with cohesive visual direction.`;
       case 'nsfw':
         return `${basePrompt} Focus on adult-oriented content prompts. Use professional, descriptive language while maintaining the adult nature of the content.`;
       default:
@@ -2834,6 +2867,9 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
         ? '\n\nNSFW CONTENT POLICY: You may generate, describe, or reference NSFW (not safe for work), adult, sexual, or explicit content when appropriate for the user\'s request.'
         : '\n\nNSFW CONTENT POLICY: Do not generate, describe, or reference any NSFW (not safe for work), adult, sexual, or explicit content. Keep all responses family-friendly and appropriate.';
 
+      // Use mode-specific system prompt
+      const modeSystemPrompt = CHAT_MODE_PROMPTS[chatMode as keyof typeof CHAT_MODE_PROMPTS] || NICOLE_BASE_SYSTEM_PROMPT;
+
       const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2842,7 +2878,7 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
           messages: [
             {
               role: 'system',
-              content: `${chatSystemPrompt ? chatSystemPrompt + '\n\n' : ''}${NICOLE_BASE_SYSTEM_PROMPT}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}${nsfwInstructions}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+              content: `${modeSystemPrompt}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}${nsfwInstructions}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
             },
             ...updatedMessages,
           ],
@@ -3806,6 +3842,8 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
               setChatInput={setChatInput}
               chatModel={chatModel}
               setChatModel={setChatModel}
+              chatMode={chatMode}
+              setChatMode={setChatMode}
               chatSystemPrompt={chatSystemPrompt}
               setChatSystemPrompt={setChatSystemPrompt}
               chatSystemPromptModalOpen={chatSystemPromptModalOpen}
@@ -4939,6 +4977,8 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
           setChatInput={setChatInput}
           chatModel={chatModel}
           setChatModel={setChatModel}
+          chatMode={chatMode}
+          setChatMode={setChatMode}
           chatSystemPrompt={chatSystemPrompt}
           setChatSystemPrompt={setChatSystemPrompt}
           chatSystemPromptModalOpen={chatSystemPromptModalOpen}

@@ -57,6 +57,9 @@ export interface ChatPanelProps {
   // Analyze Quality feature
   onAnalyzeQuality?: () => Promise<void>;
   analyzingQuality?: boolean;
+  // Chat mode selection
+  chatMode?: string;
+  setChatMode?: (mode: string) => void;
 }
 
 export default function ChatPanel({
@@ -100,9 +103,12 @@ export default function ChatPanel({
   applyingActions,
   onAnalyzeQuality,
   analyzingQuality,
+  chatMode,
+  setChatMode,
 }: ChatPanelProps) {
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
+  const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -110,6 +116,25 @@ export default function ChatPanel({
       chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
     }
   }, [chatMessages, chatSending]);
+
+  // Check if message is quality analysis
+  const isQualityAnalysis = (content: string) => {
+    return content.includes('**Prompt Quality Analysis') && content.includes('**Score:');
+  };
+
+  // Parse quality analysis into structured data
+  const parseQualityAnalysis = (content: string) => {
+    const scoreMatch = content.match(/\*\*Score:\s*(\d+)\/100\*\*/);    const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+    
+    const strengthsMatch = content.match(/\*\*Strengths:\*\*([\s\S]*?)\*\*Areas for Improvement:/);    const strengths = strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
+    
+    const improvementsMatch = content.match(/\*\*Areas for Improvement:\*\*([\s\S]*?)\*\*Recommendation:/);    const improvements = improvementsMatch ? improvementsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
+    
+    const recommendationMatch = content.match(/\*\*Recommendation:\*\*\s*(.+)/);
+    const recommendation = recommendationMatch ? recommendationMatch[1].trim() : '';
+    
+    return { score, strengths, improvements, recommendation };
+  };
 
   const parseMessageParts = (content: string) => {
     const parts: Array<{ type: 'text' | 'code'; text?: string; lang?: string; code?: string }> = [];
@@ -152,29 +177,22 @@ export default function ChatPanel({
         <div className="chat-header">
           <div className="chat-header-left">
             <div className="chat-title-block">
-              <p className="eyebrow">Nicole • Prompt co-pilot</p>
-              <h3>Chat workspace</h3>
+              <p className="eyebrow">Nicole • AI Prompt Engineer</p>
+              <h3>{chatMode === 'flux' ? 'Flux Mode' : chatMode === 'sd' ? 'Stable Diffusion' : chatMode === 'ltx' ? 'LTX Video prompt creator' : 'Chat'}</h3>
             </div>
-            {!chatMinimized && (
-              <select
-                className="chat-model-selector"
-                value={chatModel || ollamaSettings.model}
-                onChange={(e) => setChatModel(e.target.value)}
-                disabled={!ollamaSettings.enabled}
-                title="Select AI model for chat"
-                aria-label="Select AI model"
-              >
-                {ollamaAvailableModels.length > 0 ? (
-                  ollamaAvailableModels.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))
-                ) : (
-                  <option value={ollamaSettings.model}>{ollamaSettings.model}</option>
-                )}
-              </select>
-            )}
           </div>
           <div className="chat-header-actions">
+            {!chatMinimized && setChatMode && (
+              <button
+                className="ghost small"
+                type="button"
+                onClick={() => setChatSettingsOpen(!chatSettingsOpen)}
+                title="Chat settings and mode"
+                aria-label="Open chat settings"
+              >
+                ⚙️
+              </button>
+            )}
             {onToggleDock && !chatMaximized && (
               <button
                 className="ghost small"
@@ -183,12 +201,12 @@ export default function ChatPanel({
                 title={docked ? 'Undock to floating panel' : 'Dock to left sidebar'}
                 aria-label={docked ? 'Undock chat' : 'Dock chat'}
               >
-                {docked ? 'Float' : 'Dock'}
+                {docked ? '○' : '◉'}
               </button>
             )}
             {!docked && setChatMaximized && (
               <button
-                className="ghost small"
+                className="ghost small icon-only"
                 type="button"
                 onClick={() => {
                   setChatMaximized(!chatMaximized);
@@ -197,7 +215,7 @@ export default function ChatPanel({
                 title={chatMaximized ? 'Restore to window' : 'Maximize to fullscreen'}
                 aria-label={chatMaximized ? 'Restore chat' : 'Maximize chat'}
               >
-                {chatMaximized ? '🗗' : '🗖'}
+                {chatMaximized ? '⊡' : '⊞'}
               </button>
             )}
             <button
@@ -347,6 +365,94 @@ Please review this context and let me know how I can optimize my prompts for the
                 </div>
               )}
               {chatMessages.map((msg, idx) => {
+                // Check if this is a quality analysis message
+                if (msg.role === 'assistant' && isQualityAnalysis(msg.content)) {
+                  const analysisData = parseQualityAnalysis(msg.content);
+                  return (
+                    <div key={idx} className="chat-message assistant quality-analysis">
+                      <div className="chat-message-row">
+                        <div className="chat-avatar" aria-hidden>N</div>
+                        <div className="chat-message-body">
+                          <div className="chat-message-role">
+                            Nicole
+                            {msg.timestamp && <span className="chat-timestamp">{new Date(msg.timestamp).toLocaleTimeString()}</span>}
+                          </div>
+                          <div className="quality-analysis-card">
+                            <div className="quality-analysis-header">
+                              <div className="quality-score-badge" data-score={analysisData.score >= 80 ? 'high' : analysisData.score >= 60 ? 'medium' : 'low'}>
+                                <span className="score-value">{analysisData.score}</span>
+                                <span className="score-max">/100</span>
+                              </div>
+                              <div className="quality-title">
+                                <h4>Prompt Quality Analysis</h4>
+                                <p>Based on {mode} mode criteria</p>
+                              </div>
+                            </div>
+
+                            {analysisData.strengths.length > 0 && (
+                              <div className="quality-section strengths">
+                                <h5>✓ Strengths</h5>
+                                <ul>
+                                  {analysisData.strengths.map((s, i) => (
+                                    <li key={i}>{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {analysisData.improvements.length > 0 && (
+                              <div className="quality-section improvements">
+                                <h5>⚡ Areas for Improvement</h5>
+                                <ul>
+                                  {analysisData.improvements.map((imp, i) => (
+                                    <li key={i}>{imp}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {analysisData.recommendation && (
+                              <div className="quality-recommendation">
+                                <p>{analysisData.recommendation}</p>
+                              </div>
+                            )}
+
+                            <div className="quality-actions">
+                              <button
+                                className="primary"
+                                onClick={() => {
+                                  const improvementText = analysisData.improvements.length > 0 
+                                    ? `Help me improve these aspects: ${analysisData.improvements.join(', ')}`
+                                    : 'Help me further refine this prompt';
+                                  setChatInput(improvementText);
+                                  if (chatInputRef.current) {
+                                    chatInputRef.current.focus();
+                                  }
+                                  showToast('Improvement request added to input');
+                                }}
+                              >
+                                💡 Apply Improvements to Input
+                              </button>
+                              <button
+                                className="ghost"
+                                onClick={() => {
+                                  setChatInput('Can you provide a refined version incorporating these improvements?');
+                                  if (chatInputRef.current) {
+                                    chatInputRef.current.focus();
+                                  }
+                                }}
+                              >
+                                Request Refined Version
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Regular message rendering
                 const parts = parseMessageParts(msg.content);
                 return (
                   <div key={idx} className={`chat-message ${msg.role}`}>
@@ -542,6 +648,104 @@ Please review this context and let me know how I can optimize my prompts for the
           </>
         )}
       </div>
+
+      {/* Settings Menu Modal */}
+      {chatSettingsOpen && setChatMode && (
+        <div className="settings-overlay" onMouseDown={() => setChatSettingsOpen(false)}>
+          <div className="settings-panel chat-settings-modal" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="settings-head">
+              <div>
+                <h3 className="settings-title">Chat Settings</h3>
+                <p className="hint">Configure chat mode and AI model preferences</p>
+              </div>
+              <button className="ghost" type="button" onClick={() => setChatSettingsOpen(false)}>Close</button>
+            </div>
+            <div className="settings-body settings-body-single-col">
+              <div className="field-group">
+                <label className="field-label">Chat Mode</label>
+                <p className="hint">Select the type of prompts you're working with</p>
+                <div className="mode-selector-grid">
+                  <button
+                    className={`mode-card ${chatMode === 'ltx' ? 'active' : ''}`}
+                    onClick={() => {
+                      setChatMode('ltx');
+                      showToast('LTX Video prompt creator mode activated');
+                    }}
+                  >
+                    <div className="mode-icon">🎬</div>
+                    <div className="mode-title">LTX Video prompt creator</div>
+                    <div className="mode-desc">Cinematic video generation</div>
+                  </button>
+                  <button
+                    className={`mode-card ${chatMode === 'flux' ? 'active' : ''}`}
+                    onClick={() => {
+                      setChatMode('flux');
+                      showToast('Flux mode activated');
+                    }}
+                  >
+                    <div className="mode-icon">✨</div>
+                    <div className="mode-title">Flux</div>
+                    <div className="mode-desc">High-quality image generation</div>
+                  </button>
+                  <button
+                    className={`mode-card ${chatMode === 'sd' ? 'active' : ''}`}
+                    onClick={() => {
+                      setChatMode('sd');
+                      showToast('Stable Diffusion mode activated');
+                    }}
+                  >
+                    <div className="mode-icon">🖼️</div>
+                    <div className="mode-title">Stable Diffusion</div>
+                    <div className="mode-desc">Versatile image creation</div>
+                  </button>
+                  <button
+                    className={`mode-card ${!chatMode || chatMode === 'general' ? 'active' : ''}`}
+                    onClick={() => {
+                      setChatMode('general');
+                      showToast('General mode activated');
+                    }}
+                  >
+                    <div className="mode-icon">💬</div>
+                    <div className="mode-title">General</div>
+                    <div className="mode-desc">All-purpose assistance</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="field-group">
+                <label className="field-label">AI Model</label>
+                <select
+                  className="field-select"
+                  value={chatModel || ollamaSettings.model}
+                  onChange={(e) => setChatModel(e.target.value)}
+                  disabled={!ollamaSettings.enabled}
+                >
+                  {ollamaAvailableModels.length > 0 ? (
+                    ollamaAvailableModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))
+                  ) : (
+                    <option value={ollamaSettings.model}>{ollamaSettings.model}</option>
+                  )}
+                </select>
+                <p className="hint">Selected model: {chatModel || ollamaSettings.model}</p>
+              </div>
+
+              <div className="field-group">
+                <button
+                  className="ghost"
+                  onClick={() => {
+                    setChatSystemPromptModalOpen(true);
+                    setChatSettingsOpen(false);
+                  }}
+                >
+                  Edit System Prompt
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* System Prompt Modal */}
       {chatSystemPromptModalOpen && (

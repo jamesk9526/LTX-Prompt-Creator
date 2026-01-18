@@ -232,7 +232,7 @@ Your communication style:
 - NEVER use emojis, emoticons, or excessive punctuation
 - Cut the fluff - deliver pure value`;
 
-      const LTX_CONTEXT = `LTX VIDEO MODEL INFORMATION:
+      const LTX_CONTEXT = `LTX VIDEO PROMPT CREATOR MODEL INFORMATION:
 LTX is a state-of-the-art text-to-video generation model optimized for professional video creation.`;
 
       const ACTIONS_SPEC = `UI CONTROL ACTIONS:
