@@ -516,14 +516,28 @@ Please review this context and let me know how I can optimize my prompts for the
                 disabled={!ollamaSettings.enabled || chatSending}
                 rows={1}
               />
-              <button
-                className="primary"
-                type="button"
-                onClick={sendChatMessage}
-                disabled={!ollamaSettings.enabled || chatSending || !chatInput.trim()}
-              >
-                {chatSending ? 'Sending...' : 'Send'}
-              </button>
+              <div className="chat-input-buttons">
+                {onAnalyzeQuality && (
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={onAnalyzeQuality}
+                    disabled={!ollamaSettings.enabled || chatSending || analyzingQuality}
+                    title="Analyze prompt quality using Ollama"
+                    aria-label="Analyze prompt quality"
+                  >
+                    {analyzingQuality ? '🔍 Analyzing...' : '🔍 Analyze Quality'}
+                  </button>
+                )}
+                <button
+                  className="primary"
+                  type="button"
+                  onClick={sendChatMessage}
+                  disabled={!ollamaSettings.enabled || chatSending || !chatInput.trim()}
+                >
+                  {chatSending ? 'Sending...' : 'Send'}
+                </button>
+              </div>
             </div>
           </>
         )}

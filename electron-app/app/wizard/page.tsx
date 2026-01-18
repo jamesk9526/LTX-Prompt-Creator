@@ -3825,6 +3825,8 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
               sendChatMessage={sendChatMessage}
               addToPromptHistory={addToPromptHistory}
               applyingActions={applyingActions}
+              onAnalyzeQuality={analyzeQualityManually}
+              analyzingQuality={analyzingQuality}
             />
             <div
               className="chat-resize-handle"
@@ -4956,6 +4958,8 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
           sendChatMessage={sendChatMessage}
           addToPromptHistory={addToPromptHistory}
           applyingActions={applyingActions}
+          onAnalyzeQuality={analyzeQualityManually}
+          analyzingQuality={analyzingQuality}
         />
       )}
 
