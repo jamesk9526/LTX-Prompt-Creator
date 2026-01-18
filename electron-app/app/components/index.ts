@@ -7,3 +7,5 @@ export type { ChatPanelProps, ChatMessage } from './ChatPanel';
 export { default as Toast } from './Toast';
 
 export { default as ProjectsModal } from './modals/ProjectsModal';
+
+export { default as CSVPromptBuilder } from './CSVPromptBuilder';

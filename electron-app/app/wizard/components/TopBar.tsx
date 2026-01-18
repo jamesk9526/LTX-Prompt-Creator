@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import ToolsMenu from './ToolsMenu';
 
 type ModeId = 'cinematic' | 'classic' | 'drone' | 'animation' | 'photography' | 'nsfw';
 
@@ -33,8 +34,6 @@ interface TopBarProps {
   uiPrefs: UiPrefs;
   previewOpen: boolean;
   onPreviewToggle: () => void;
-  nsfwEnabled: boolean;
-  onNsfwToggle: () => void;
   isStepLocked: (step: number) => boolean;
   onToggleStepLock: (step: number) => void;
   onRandomizeStep: () => void;
@@ -42,6 +41,7 @@ interface TopBarProps {
   onResetStep: () => void;
   onResetWizard: () => void;
   onOpenProjects: () => void;
+  onOpenCSVBuilder: () => void;
   onOpenSettings: () => void;
   onOpenPresetCreator: () => void;
   onOpenTemplates: () => void;
@@ -74,8 +74,6 @@ export default function TopBar({
   uiPrefs,
   previewOpen,
   onPreviewToggle,
-  nsfwEnabled,
-  onNsfwToggle,
   isStepLocked,
   onToggleStepLock,
   onRandomizeStep,
@@ -83,6 +81,7 @@ export default function TopBar({
   onResetStep,
   onResetWizard,
   onOpenProjects,
+  onOpenCSVBuilder,
   onOpenSettings,
   onOpenPresetCreator,
   onOpenTemplates,
@@ -168,27 +167,6 @@ export default function TopBar({
               🎲
             </button>
             <button
-              className={`icon-btn ${!uiPrefs.hideNsfw ? (nsfwEnabled ? 'active' : '') : 'disabled'}`}
-              type="button"
-              title={
-                uiPrefs.hideNsfw
-                  ? 'NSFW is hidden'
-                  : nsfwEnabled
-                  ? 'Disable NSFW'
-                  : 'Enable NSFW'
-              }
-              onClick={() => {
-                if (!uiPrefs.hideNsfw) {
-                  onNsfwToggle();
-                  onShowToast(nsfwEnabled ? '🔒 NSFW disabled' : '🔓 NSFW enabled');
-                }
-              }}
-              disabled={uiPrefs.hideNsfw}
-              aria-label={`Toggle NSFW mode: currently ${nsfwEnabled ? 'enabled' : 'disabled'}`}
-            >
-              {uiPrefs.hideNsfw ? '⊘' : nsfwEnabled ? '🔞' : '🚫'}
-            </button>
-            <button
               className={`icon-btn ${isStepLocked(step) ? 'locked' : ''}`}
               type="button"
               title={
@@ -251,101 +229,23 @@ export default function TopBar({
           </div>
 
           <div className="topbar-group">
-            <button
-              className="ghost"
-              type="button"
-              onClick={onPreviewToggle}
-              aria-label={`Preview: ${previewOpen ? 'hide' : 'show'}`}
-            >
-              {previewOpen ? '⊘ Hide Preview' : '✓ Show Preview'}
-            </button>
-            <button
-              className="icon-btn"
-              type="button"
-              aria-label="Open projects"
-              title="Projects"
-              onClick={onOpenProjects}
-            >
-              📁
-            </button>
-            <button
-              className="ghost"
-              type="button"
-              onClick={onOpenPresetCreator}
-              aria-label="Open preset creator"
-            >
-              Create Preset
-            </button>
-            <button
-              className="icon-btn"
-              type="button"
-              aria-label="Open settings"
-              title="Settings"
-              onClick={onOpenSettings}
-            >
-              ⚙️
-            </button>
-            <button
-              className="ghost"
-              type="button"
-              onClick={onOpenTemplates}
-              aria-label="Open templates"
-            >
-              Templates
-            </button>
-            <button
-              className="ghost"
-              type="button"
-              onClick={onOpenBatch}
-              aria-label="Open batch generator"
-            >
-              Batch
-            </button>
-            <button
-              className="ghost"
-              type="button"
-              onClick={onOpenHistory}
-              aria-label="Open prompt history"
-            >
-              History
-            </button>
-            <button
-              className={`ghost${chatHistoryOpen ? ' active' : ''}`}
-              type="button"
-              onClick={onToggleChatHistory}
-              disabled={!onToggleChatHistory}
-              aria-label="Toggle chat history sidebar"
-              title="Chat history"
-            >
-              📚 Chat
-            </button>
-            <button
-              className={`ghost${chatSessionUnsaved ? ' unsaved' : ''}`}
-              type="button"
-              onClick={onSaveChat}
-              disabled={!onSaveChat}
-              aria-label="Save current chat session"
-              title={chatSessionUnsaved ? 'Unsaved changes in chat' : 'Save current chat session'}
-            >
-              💾 {chatSessionUnsaved ? 'Save Chat' : 'Chat Saved'}
-            </button>
-          </div>
-
-          <div className="topbar-group">
-            <button
-              className={`ghost${ollamaExpanding ? ' loading' : ''}`}
-              type="button"
-              onClick={onExpandWithOllama}
-              disabled={ollamaExpanding}
-              title={
-                ollamaExpanding
-                  ? 'Expanding prompt with AI...'
-                  : 'Expand prompt with AI'
-              }
-              aria-label={`AI Expand: ${ollamaExpanding ? 'expanding' : 'ready'}`}
-            >
-              {ollamaExpanding ? '⏳ Expanding...' : '✨ AI Expand'}
-            </button>
+            <ToolsMenu
+              onOpenSettings={onOpenSettings}
+              onOpenPresetCreator={onOpenPresetCreator}
+              previewOpen={previewOpen}
+              onPreviewToggle={onPreviewToggle}
+              onOpenProjects={onOpenProjects}
+              onOpenTemplates={onOpenTemplates}
+              onOpenBatch={onOpenBatch}
+              onOpenHistory={onOpenHistory}
+              chatHistoryOpen={chatHistoryOpen}
+              onToggleChatHistory={onToggleChatHistory || (() => {})}
+              chatSessionUnsaved={chatSessionUnsaved}
+              onSaveChat={onSaveChat || (() => {})}
+              onExpandWithOllama={onExpandWithOllama}
+              ollamaExpanding={ollamaExpanding}
+              onOpenCSVBuilder={onOpenCSVBuilder}
+            />
             <span
               className="ollama-model-indicator"
               aria-live="polite"

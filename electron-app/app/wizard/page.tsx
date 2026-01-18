@@ -5,6 +5,7 @@ import './wizard.css';
 import ChatPanel from '../components/ChatPanel';
 import Toast from '../components/Toast';
 import ProjectsModal from '../components/modals/ProjectsModal';
+import CSVPromptBuilder from '../components/CSVPromptBuilder';
 import TopBar from './components/TopBar';
 import OllamaSidePanel from './modals/OllamaSidePanel';
 import SettingsModal from './modals/SettingsModal';
@@ -800,7 +801,8 @@ const DEFAULT_OPTION_SETS: OptionSets = {
   },
 };
 
-const STEPS = Array.from({ length: 22 }, (_, i) => i + 1);
+// Updated to 10-step simplified workflow
+const STEPS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 const PRONOUNS = ['They', 'He', 'She', 'I', 'We'];
 const DIALOGUE_VERBS = ['says', 'whispers', 'murmurs', 'growls', 'shouts', 'laughs', 'breathes'];
@@ -821,29 +823,37 @@ const MULTI_SELECT_FIELDS = new Set<string>([
   'storyElements',
 ]);
 
+// Consolidated 10-step workflow mapping
 const STEP_FIELDS: Record<number, string[]> = {
-  1: ['sceneDescription', 'mainSubject', 'storyElements', 'inspirationNotes'],
-  2: ['genre', 'shot', 'framingNotes'],
-  3: ['role', 'wardrobe', 'hairColor', 'eyeColor', 'bodyDescriptor'],
-  4: ['pose', 'mood'],
-  5: ['movementSubjectType', 'movementSubjectLabel', 'movement1', 'movement2', 'actions'],
-  6: ['lighting', 'environment', 'environmentTexture', 'lightingIntensity'],
-  7: ['cameraMove', 'lens', 'focusTarget'],
-  8: ['colorGrade', 'weather'],
-  9: ['lightInteraction', 'sig1', 'sig2'],
- 10: ['sound', 'sfx'],
- 11: ['music', 'mix_notes'],
- 12: ['dialogue', 'pronoun', 'dialogue_verb'],
- 13: ['advancedTechnical', 'cinematicNotes'],
- 14: ['position', 'activity', 'accessory', 'explicit_abilities', 'body_description'],
- 15: ['fetish', 'bodyFocus', 'sensation', 'sexual_description'],
- 16: ['references', 'inspirationStyle', 'visualReference'],
- 17: ['timeOfDay', 'season', 'era', 'culturalContext'],
- 18: ['specialEffects', 'practicalElements', 'vfxNotes'],
- 19: ['characterDevelopment', 'emotionalArc', 'subtext'],
- 20: ['pacing', 'timing', 'rhythmNotes'],
- 21: ['finalTouches', 'customDetails'],
- 22: [],
+  // Step 1: Scene Setup (merged old steps 1-2)
+  1: ['sceneDescription', 'mainSubject', 'storyElements', 'inspirationNotes', 'genre', 'shot', 'framingNotes'],
+  
+  // Step 2: Subject & Character (merged old steps 3-4)
+  2: ['role', 'wardrobe', 'hairColor', 'eyeColor', 'bodyDescriptor', 'pose', 'mood'],
+  
+  // Step 3: Action & Movement (old step 5 enhanced)
+  3: ['movementSubjectType', 'movementSubjectLabel', 'movement1', 'movement2', 'actions'],
+  
+  // Step 4: Visual Style (merged old steps 6, 8)
+  4: ['lighting', 'environment', 'environmentTexture', 'lightingIntensity', 'colorGrade', 'weather'],
+  
+  // Step 5: Camera & Composition (merged old steps 7, 13)
+  5: ['cameraMove', 'lens', 'focusTarget', 'advancedTechnical', 'cinematicNotes'],
+  
+  // Step 6: Audio & Atmosphere (merged old steps 10-12)
+  6: ['sound', 'sfx', 'music', 'mix_notes', 'dialogue', 'pronoun', 'dialogue_verb'],
+  
+  // Step 7: Enhancement & Effects (merged old steps 9, 16, 18, 21)
+  7: ['lightInteraction', 'sig1', 'sig2', 'references', 'inspirationStyle', 'visualReference', 'specialEffects', 'practicalElements', 'vfxNotes', 'finalTouches', 'customDetails'],
+  
+  // Step 8: Adult Content (merged old steps 14-15, conditional)
+  8: ['position', 'activity', 'accessory', 'explicit_abilities', 'body_description', 'fetish', 'bodyFocus', 'sensation', 'sexual_description'],
+  
+  // Step 9: Context & Timing (merged old steps 17, 19-20)
+  9: ['timeOfDay', 'season', 'era', 'culturalContext', 'characterDevelopment', 'emotionalArc', 'subtext', 'pacing', 'timing', 'rhythmNotes'],
+  
+  // Step 10: Review & Generate (old step 22 enhanced)
+  10: [],
 };
 
 const normalizeFieldKey = (field: string) => (field || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1141,6 +1151,7 @@ export default function WizardPage() {
     { cinematic: {}, classic: {}, drone: {}, animation: {}, nsfw: {} }
   );
   const [projectsOpen, setProjectsOpen] = useState(false);
+  const [csvBuilderOpen, setCsvBuilderOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
@@ -1771,28 +1782,16 @@ export default function WizardPage() {
 
   const stepTitle = useCallback((n: number) => {
     switch (n) {
-      case 1: return 'Creative brief';
-      case 2: return 'Subject & framing';
-      case 3: return mode === 'drone' ? 'Focus & surface detail' : 'Character & styling';
-      case 4: return mode === 'drone' ? 'Motion & mood' : 'Pose & emotion';
-      case 5: return 'Action beats';
-      case 6: return 'Lighting & environment';
-      case 7: return 'Camera & lens';
-      case 8: return 'Grade & weather';
-      case 9: return 'Light behavior & signatures';
-      case 10: return mode === 'drone' ? 'Ambient soundscape' : 'Ambient & SFX';
-      case 11: return 'Music & mix';
-      case 12: return mode === 'drone' ? 'Optional narration' : 'Dialogue & speaker';
-      case 13: return 'Technical & notes';
-      case 14: return mode === 'nsfw' ? 'Position & activity' : 'NSFW position';
-      case 15: return mode === 'nsfw' ? 'Body focus & sensation' : 'NSFW expression';
-      case 16: return 'References & inspiration';
-      case 17: return 'Time, season & era';
-      case 18: return 'VFX & practicals';
-      case 19: return 'Character development';
-      case 20: return 'Pacing & rhythm';
-      case 21: return 'Final polish';
-      case 22: return 'Review & build';
+      case 1: return '🎬 Scene Setup';
+      case 2: return mode === 'drone' ? '🎯 Focus & Surface' : '👤 Subject & Character';
+      case 3: return '🎭 Action & Movement';
+      case 4: return '💡 Visual Style';
+      case 5: return '📹 Camera & Composition';
+      case 6: return mode === 'drone' ? '🎵 Ambient Soundscape' : '🎵 Audio & Atmosphere';
+      case 7: return '✨ Enhancement & Effects';
+      case 8: return mode === 'nsfw' ? '🔞 Adult Content' : '⏭️ Skip (NSFW Off)';
+      case 9: return '📝 Context & Timing';
+      case 10: return '🎯 Review & Generate';
       default: return `Step ${n}`;
     }
   }, [mode]);
@@ -3032,8 +3031,6 @@ export default function WizardPage() {
         uiPrefs={uiPrefs}
         previewOpen={previewOpen}
         onPreviewToggle={() => setPreviewOpen((v) => !v)}
-        nsfwEnabled={nsfwEnabled}
-        onNsfwToggle={() => setNsfwEnabled(!nsfwEnabled)}
         isStepLocked={isStepLocked}
         onToggleStepLock={toggleStepLock}
         onRandomizeStep={randomizeStep}
@@ -3041,6 +3038,7 @@ export default function WizardPage() {
         onResetStep={resetCurrentStep}
         onResetWizard={resetWizard}
         onOpenProjects={() => setProjectsOpen(true)}
+        onOpenCSVBuilder={() => setCsvBuilderOpen(true)}
         onOpenSettings={() => {
           setSettingsMode(mode);
           setSettingsField('genre');
@@ -3087,6 +3085,12 @@ export default function WizardPage() {
         loadProject={loadProject}
         exportProject={exportProject}
         deleteProject={deleteProject}
+      />
+
+      {/* CSV Prompt Builder Component */}
+      <CSVPromptBuilder
+        isOpen={csvBuilderOpen}
+        onClose={() => setCsvBuilderOpen(false)}
       />
 
       {presetCreatorOpen && (
@@ -4073,34 +4077,77 @@ export default function WizardPage() {
           </div>
         </article>
 
-        <article className={`step ${step === 8 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 8</p>
-            <h2>Grade & weather</h2>
-            <p className="hint">Color tone and atmospheric conditions.</p>
-          </div>
-          <div className="field-grid">
-            {['colorGrade', 'weather'].map((field) => (
-              <label className="field" key={field}>
-                {renderLabel(
-                  labelForField(field),
-                  field === 'colorGrade'
-                    ? 'Palette direction (e.g., Teal & amber, Clean neutral). Guides overall color and mood.'
-                    : 'Atmospheric conditions (e.g., Fine rain, Foggy). Modulates light texture and depth.',
-                  field
-                )}
-                <PickOrTypeField
-                  ariaLabel={labelForField(field)}
-                  value={fieldValue(field)}
-                  placeholder={examplePlaceholder(selects[field] || [])}
-                  listId={listIdFor(field)}
-                  options={selects[field] || []}
-                  onChange={(v) => handleInput(field, v)}
+        {/* Step 8: Adult Content - Only visible when NSFW enabled */}
+        {nsfwEnabled && (
+          <article className={`step ${step === 8 ? 'active' : ''}`}>
+            <div className="step-header">
+              <p className="eyebrow">Step 8</p>
+              <h2>🔞 Adult Content</h2>
+              <p className="hint">Intimate details and sensual context (NSFW mode only).</p>
+            </div>
+            <div className="field-grid">
+              {/* Position, Activity, Accessory */}
+              <label className="field">
+                {renderLabel('Position', 'Intimate positioning and poses.', 'position')}
+                {renderPickOrType('position')}
+              </label>
+              <label className="field">
+                {renderLabel('Activity', 'Sensual actions and interactions.', 'activity')}
+                {renderPickOrType('activity')}
+              </label>
+              <label className="field">
+                {renderLabel('Accessory', 'Adult toys, restraints, and items.', 'accessory')}
+                {renderPickOrType('accessory')}
+              </label>
+
+              {/* Body focus, Sensation, Fetish */}
+              <label className="field">
+                {renderLabel('Body focus', 'Detailed body parts and emphasis.', 'bodyFocus')}
+                {renderPickOrType('bodyFocus')}
+              </label>
+              <label className="field">
+                {renderLabel('Sensation', 'Sensory experiences and touches.', 'sensation')}
+                {renderPickOrType('sensation')}
+              </label>
+              <label className="field">
+                {renderLabel('Fetish', 'Specific kinks and fetishes.', 'fetish')}
+                {renderPickOrType('fetish')}
+              </label>
+
+              {/* Explicit abilities, Sexual description */}
+              <label className="field">
+                {renderLabel('Explicit abilities', 'Specific intimate capabilities or acts.', 'explicit_abilities')}
+                <input
+                  type="text"
+                  value={current.explicit_abilities || ''}
+                  onChange={(e) => handleInput('explicit_abilities', e.target.value)}
+                  placeholder="e.g., power play, restraints"
+                  aria-label="Explicit abilities"
                 />
               </label>
-            ))}
-          </div>
-        </article>
+              <label className="field">
+                {renderLabel('Sexual description', 'Energy, acts, or intimacy level.', 'sexual_description')}
+                <input
+                  type="text"
+                  value={current.sexual_description || ''}
+                  onChange={(e) => handleInput('sexual_description', e.target.value)}
+                  placeholder="e.g., intimate tension, close contact"
+                  aria-label="Sexual description"
+                />
+              </label>
+              <label className="field">
+                {renderLabel('Body description', 'Optional physical cues and details.', 'body_description')}
+                <input
+                  type="text"
+                  value={current.body_description || ''}
+                  onChange={(e) => handleInput('body_description', e.target.value)}
+                  placeholder="e.g., toned silhouette, tattoos"
+                  aria-label="Body description"
+                />
+              </label>
+            </div>
+          </article>
+        )}
 
         <article className={`step ${step === 9 ? 'active' : ''}`}>
           <div className="step-header">
@@ -4137,379 +4184,11 @@ export default function WizardPage() {
           </div>
         </article>
 
+        {/* Step 10: Review & Generate - Moved here, old steps 10-21 removed */}
         <article className={`step ${step === 10 ? 'active' : ''}`}>
           <div className="step-header">
             <p className="eyebrow">Step 10</p>
-            <h2>{mode === 'drone' ? 'Ambient soundscape' : 'Ambient & SFX'}</h2>
-            <p className="hint">Lay down the audio bed.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Ambient sound', 'Background bed (e.g., City hush, Quiet room). Fills space between moments and sets location feel.', 'sound')}
-              {renderPickOrType('sound')}
-            </label>
-
-            <label className="field">
-              {renderLabel('Sound effects (SFX)', 'Spot effects (e.g., Footsteps, Door creak) that punctuate actions and transitions.', 'sfx')}
-              {renderPickOrType('sfx')}
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 11 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 11</p>
-            <h2>Music & mix</h2>
-            <p className="hint">Optional score plus any mixing notes.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Music (optional)', 'Score/bed (e.g., Orchestral swell, Lo‑fi beat). Leave blank for silence.', 'music')}
-              <PickOrTypeField
-                ariaLabel="Music"
-                value={fieldValue('music')}
-                placeholder={examplePlaceholder(selects.music || [])}
-                listId={listIdFor('music')}
-                options={selects.music || []}
-                onChange={(v) => handleInput('music', v)}
-              />
-            </label>
-
-            <label className="field">
-              {renderLabel('Mix notes (optional)', 'Balance cues (e.g., dialogue forward, ambience low, SFX punchy).', 'mix_notes')}
-              <textarea
-                value={current.mix_notes || ''}
-                onChange={(e) => handleInput('mix_notes', e.target.value)}
-                rows={3}
-                placeholder={'e.g., keep dialogue crisp, ambience low, SFX punchy'}
-                aria-label="Mix notes"
-              />
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 12 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 12</p>
-            <h2>{mode === 'drone' ? 'Optional narration' : 'Dialogue & speaker'}</h2>
-            <p className="hint">{mode === 'drone' ? 'Add narration if needed; otherwise leave blank for a clean ambient bed.' : 'Optional dialogue line plus who says it and how.'}</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Dialogue line', 'Short line or narration. Leave blank to omit dialogue.', 'dialogue')}
-              <textarea
-                value={current.dialogue || ''}
-                onChange={(e) => handleInput('dialogue', e.target.value)}
-                rows={3}
-                placeholder={'e.g., "We move on my mark," she whispers.'}
-                aria-label="Dialogue line"
-              />
-            </label>
-
-            <label className="field">
-              {renderLabel('Speaker / pronoun', 'Who delivers the line; sets pronoun context.', 'pronoun')}
-              <select
-                value={current.pronoun || ''}
-                onChange={(e) => handleInput('pronoun', e.target.value)}
-                aria-label="Speaker or pronoun"
-              >
-                <option value="">Select speaker</option>
-                {PRONOUNS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              {renderLabel('Delivery verb', 'Delivery style for the line (says, whispers, growls).', 'dialogue_verb')}
-              <select
-                value={current.dialogue_verb || ''}
-                onChange={(e) => handleInput('dialogue_verb', e.target.value)}
-                aria-label="Delivery verb"
-              >
-                <option value="">Select delivery</option>
-                {DIALOGUE_VERBS.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 13 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 13</p>
-            <h2>Advanced technical</h2>
-            <p className="hint">Technical specs and cinematic notes for enhanced quality.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Advanced technical', 'Frame rates, DOF, focus techniques, color science.', 'advancedTechnical')}
-              {renderPickOrType('advancedTechnical')}
-            </label>
-            <label className="field">
-              {renderLabel('Cinematic notes', 'Additional technical or creative notes.', 'cinematicNotes')}
-              <input
-                type="text"
-                value={current.cinematicNotes || ''}
-                onChange={(e) => handleInput('cinematicNotes', e.target.value)}
-                placeholder="e.g., use practical lighting, avoid CGI feel"
-                aria-label="Cinematic notes"
-              />
-            </label>
-          </div>
-        </article>
-
-        {!uiPrefs.hideNsfw && (
-          <>
-            <article className={`step ${step === 14 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 14</p>
-            <h2>{mode === 'nsfw' ? 'Position & activity' : 'NSFW position'}</h2>
-            <p className="hint">Adult-only context. Ignored unless NSFW is enabled.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Position', 'Intimate positioning and poses.', 'position')}
-              {renderPickOrType('position')}
-            </label>
-            <label className="field">
-              {renderLabel('Activity', 'Sensual actions and interactions.', 'activity')}
-              {renderPickOrType('activity')}
-            </label>
-            <label className="field">
-              {renderLabel('Accessory', 'Adult toys, restraints, and items.', 'accessory')}
-              {renderPickOrType('accessory')}
-            </label>
-            <label className="field">
-              {renderLabel('Explicit abilities', 'Only used when NSFW is on.', 'explicit_abilities')}
-              <input
-                type="text"
-                value={current.explicit_abilities || ''}
-                onChange={(e) => handleInput('explicit_abilities', e.target.value)}
-                placeholder="e.g., power play, restraints"
-                aria-label="Explicit abilities"
-              />
-            </label>
-            <label className="field">
-              {renderLabel('Body description', 'Optional physical cues; stays off in safe mode.', 'body_description')}
-              <input
-                type="text"
-                value={current.body_description || ''}
-                onChange={(e) => handleInput('body_description', e.target.value)}
-                placeholder="e.g., toned silhouette, tattoos"
-                aria-label="Body description"
-              />
-            </label>
-          </div>
-          {!nsfwEnabled && (
-            <div className="inline-alert">
-              <div className="dot" />
-              <p>NSFW disabled: these fields will be ignored unless NSFW is on.</p>
-            </div>
-          )}
-        </article>
-
-        <article className={`step ${step === 15 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 15</p>
-            <h2>{mode === 'nsfw' ? 'Body focus & sensation' : 'NSFW expression'}</h2>
-            <p className="hint">Optional intimacy details; gated by NSFW toggle.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Fetish', 'Specific kinks and fetishes.', 'fetish')}
-              {renderPickOrType('fetish')}
-            </label>
-            <label className="field">
-              {renderLabel('Body focus', 'Detailed body parts and emphasis.', 'bodyFocus')}
-              {renderPickOrType('bodyFocus')}
-            </label>
-            <label className="field">
-              {renderLabel('Sensation', 'Sensory experiences and touches.', 'sensation')}
-              {renderPickOrType('sensation')}
-            </label>
-            <label className="field">
-              {renderLabel('Sexual description', 'Energy, acts, or intimacy level. Ignored when NSFW is off.', 'sexual_description')}
-              <input
-                type="text"
-                value={current.sexual_description || ''}
-                onChange={(e) => handleInput('sexual_description', e.target.value)}
-                placeholder="e.g., intimate tension, close contact"
-                aria-label="Sexual description"
-              />
-            </label>
-          </div>
-          {!nsfwEnabled && (
-            <div className="inline-alert">
-              <div className="dot" />
-              <p>NSFW disabled: this field will be ignored unless NSFW is on.</p>
-            </div>
-          )}
-        </article>
-          </>
-        )}
-
-        <article className={`step ${step === 16 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 16</p>
-            <h2>References & inspiration</h2>
-            <p className="hint">Film, photography, and artistic references that inform your style.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('References', 'Film references, photography styles, director aesthetics.', 'references')}
-              {renderPickOrType('references')}
-            </label>
-            <label className="field">
-              {renderLabel('Inspiration style', 'Overall creative direction and mood.', 'inspirationStyle')}
-              {renderPickOrType('inspirationStyle')}
-            </label>
-            <label className="field">
-              {renderLabel('Visual reference', 'Specific visual references or examples.', 'visualReference')}
-              <input
-                type="text"
-                value={current.visualReference || ''}
-                onChange={(e) => handleInput('visualReference', e.target.value)}
-                placeholder="e.g., Blade Runner opening, Ansel Adams landscape"
-                aria-label="Visual reference"
-              />
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 17 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 17</p>
-            <h2>Time, season & era</h2>
-            <p className="hint">Temporal and cultural context for authenticity and atmosphere.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Time of day', 'Specific time for light quality and mood.', 'timeOfDay')}
-              {renderPickOrType('timeOfDay')}
-            </label>
-            <label className="field">
-              {renderLabel('Season', 'Seasonal atmosphere and environmental cues.', 'season')}
-              {renderPickOrType('season')}
-            </label>
-            <label className="field">
-              {renderLabel('Era', 'Historical period or time setting.', 'era')}
-              {renderPickOrType('era')}
-            </label>
-            <label className="field">
-              {renderLabel('Cultural context', 'Cultural or regional aesthetic.', 'culturalContext')}
-              {renderPickOrType('culturalContext')}
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 18 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 18</p>
-            <h2>VFX & effects</h2>
-            <p className="hint">Special effects, practical elements, and post-production notes.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Special effects', 'VFX, particle systems, and digital effects.', 'specialEffects')}
-              {renderPickOrType('specialEffects')}
-            </label>
-            <label className="field">
-              {renderLabel('Practical elements', 'On-set practical effects and rigging.', 'practicalElements')}
-              {renderPickOrType('practicalElements')}
-            </label>
-            <label className="field">
-              {renderLabel('VFX notes', 'Additional effects notes and requirements.', 'vfxNotes')}
-              <input
-                type="text"
-                value={current.vfxNotes || ''}
-                onChange={(e) => handleInput('vfxNotes', e.target.value)}
-                placeholder="e.g., subtle augmentation, avoid over-processing"
-                aria-label="VFX notes"
-              />
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 19 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 19</p>
-            <h2>Character development</h2>
-            <p className="hint">Character arcs, emotional beats, and subtext.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Character development', 'Character growth, traits, and transformation.', 'characterDevelopment')}
-              {renderPickOrType('characterDevelopment')}
-            </label>
-            <label className="field">
-              {renderLabel('Emotional arc', 'Emotional journey from start to finish.', 'emotionalArc')}
-              {renderPickOrType('emotionalArc')}
-            </label>
-            <label className="field">
-              {renderLabel('Subtext', 'Underlying themes and unspoken elements.', 'subtext')}
-              {renderPickOrType('subtext')}
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 20 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 20</p>
-            <h2>Pacing & timing</h2>
-            <p className="hint">Rhythm, tempo, and beat timing for your scene.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Pacing', 'Overall rhythm and speed of the scene.', 'pacing')}
-              {renderPickOrType('pacing')}
-            </label>
-            <label className="field">
-              {renderLabel('Timing', 'Beat timing and transitions.', 'timing')}
-              {renderPickOrType('timing')}
-            </label>
-            <label className="field">
-              {renderLabel('Rhythm notes', 'Additional pacing notes and considerations.', 'rhythmNotes')}
-              <input
-                type="text"
-                value={current.rhythmNotes || ''}
-                onChange={(e) => handleInput('rhythmNotes', e.target.value)}
-                placeholder="e.g., build tension slowly, quick climax"
-                aria-label="Rhythm notes"
-              />
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 21 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 21</p>
-            <h2>Final touches</h2>
-            <p className="hint">Polish and final creative details.</p>
-          </div>
-          <div className="field-grid">
-            <label className="field">
-              {renderLabel('Final touches', 'Final polish elements and quality markers.', 'finalTouches')}
-              {renderPickOrType('finalTouches')}
-            </label>
-            <label className="field">
-              {renderLabel('Custom details', 'Any additional custom notes or details.', 'customDetails')}
-              <input
-                type="text"
-                value={current.customDetails || ''}
-                onChange={(e) => handleInput('customDetails', e.target.value)}
-                placeholder="e.g., ensure brand consistency, maintain signature style"
-                aria-label="Custom details"
-              />
-            </label>
-          </div>
-        </article>
-
-        <article className={`step ${step === 22 ? 'active' : ''}`}>
-          <div className="step-header">
-            <p className="eyebrow">Step 22</p>
-            <h2>Review & build</h2>
+            <h2>Review & Generate</h2>
             <p className="hint">Confirm your picks and grab the prompt.</p>
           </div>
 
