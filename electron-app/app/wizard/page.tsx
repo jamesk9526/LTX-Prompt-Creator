@@ -32,10 +32,8 @@ const LOCKED_STEPS_STORAGE_KEY = 'ltx_prompter_locked_steps_v1';
 const OLLAMA_SETTINGS_STORAGE_KEY = 'ltx_prompter_ollama_settings_v1';
 const CHAT_SETTINGS_STORAGE_KEY = 'ltx_prompter_chat_settings_v1';
 
-// Nicole's core personality and capabilities (hidden from user, always applied)
-const NICOLE_BASE_SYSTEM_PROMPT = `You are Nicole, a professional AI assistant and expert in creative prompt writing and video production.
-
-🔴 CRITICAL OUTPUT RULES - MANDATORY:
+// CRITICAL OUTPUT RULES - Always sent with every message regardless of mode
+const CRITICAL_OUTPUT_RULES = `🔴 CRITICAL OUTPUT RULES - MANDATORY:
 
 1. PROMPT FORMAT: Output prompts as SINGLE CONTINUOUS PARAGRAPHS
    - NO section headers (Creative Brief, Visual Treatment, etc.)
@@ -94,49 +92,59 @@ Your approach:
 
 Remember: CRITICAL - ALWAYS output prompts in \`\`\`prompt code blocks. Be brief, precise, and professional. Users need the refined prompt in markdown format for easy copying.`;
 
+// Nicole's core personality and capabilities (hidden from user, always applied)
+const NICOLE_BASE_SYSTEM_PROMPT = `You are Nicole, a professional AI assistant and expert in creative prompt writing and video production.
+
+${CRITICAL_OUTPUT_RULES}
+
+Your expertise:
+- Expert-level knowledge in video prompt engineering and creative direction
+- Deep understanding of cinematography, lighting, and visual storytelling
+- Professional insights on shot composition, camera movements, and editing techniques
+- Skilled at refining vague ideas into precise, actionable prompts
+- Experience with quality analysis and prompt improvement identification
+
+Your approach:
+- Understand the user's intent quickly and accurately
+- Provide expert, actionable guidance immediately
+- When something needs improvement, state what and how concisely
+- Deliver professional-grade advice with authority
+- When analyzing prompt quality, provide constructive feedback and improved versions in code blocks`;
+
 // Mode-specific system prompts for specialized chat modes
 const CHAT_MODE_PROMPTS = {
   ltx: `You are an expert LTX Video prompt creator generation prompt engineer.
 
-CRITICAL: Output prompts as SINGLE CONTINUOUS PARAGRAPHS - no section headers, no bullet lists.
-Write flowing descriptions that naturally integrate: subject, environment, action, camera work, lighting, and technical specs.
+${CRITICAL_OUTPUT_RULES}
 
 Focus on:
 - Cinematic camera movements and shot composition
 - Temporal coherence and motion descriptions
 - Lighting and atmosphere for video
 - Scene progression and narrative flow
-- Technical video generation parameters (fps, duration, motion intensity)
-
-Output all refined prompts in \`\`\`prompt code blocks as single paragraphs.`,
+- Technical video generation parameters (fps, duration, motion intensity)`,
 
   flux: `You are an expert Flux image generation prompt engineer.
 
-CRITICAL: Output prompts as SINGLE CONTINUOUS PARAGRAPHS - no section headers, no bullet lists.
-Write flowing descriptions integrating all visual elements naturally.
+${CRITICAL_OUTPUT_RULES}
 
 Focus on:
 - Detailed visual composition and framing
 - Precise color, lighting, and material descriptions
 - Artistic styles and rendering techniques
 - High-quality photorealistic or artistic outputs
-- Negative prompts for Flux models
-
-Output all refined prompts in \`\`\`prompt code blocks as single paragraphs.`,
+- Negative prompts for Flux models`,
 
   sd: `You are an expert Stable Diffusion prompt engineer.
 
-CRITICAL: Output prompts as SINGLE CONTINUOUS PARAGRAPHS - no section headers, no bullet lists.
-Write as keyword-rich flowing descriptions with natural integration of elements.
+${CRITICAL_OUTPUT_RULES}
 
 Focus on:
 - Keyword-based prompt structure
 - Weight modifiers and emphasis syntax
 - Negative prompts to avoid artifacts
 - Art styles, artists, and aesthetic descriptors
-- Quality tags (masterpiece, best quality, highly detailed)
-
-Output all refined prompts in \`\`\`prompt code blocks as single paragraphs.`,
+- Quality tags (masterpiece, best quality, highly detailed)`,
 
   general: NICOLE_BASE_SYSTEM_PROMPT
 };
@@ -2891,8 +2899,11 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
         ? '\n\nNSFW CONTENT POLICY: You may generate, describe, or reference NSFW (not safe for work), adult, sexual, or explicit content when appropriate for the user\'s request.'
         : '\n\nNSFW CONTENT POLICY: Do not generate, describe, or reference any NSFW (not safe for work), adult, sexual, or explicit content. Keep all responses family-friendly and appropriate.';
 
-      // Use mode-specific system prompt
+      // Use mode-specific system prompt and ALWAYS prepend critical output rules
       const modeSystemPrompt = CHAT_MODE_PROMPTS[chatMode as keyof typeof CHAT_MODE_PROMPTS] || NICOLE_BASE_SYSTEM_PROMPT;
+      
+      // Construct final system prompt with critical rules ALWAYS at the top
+      const finalSystemPrompt = `${CRITICAL_OUTPUT_RULES}\n\n${modeSystemPrompt}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}${nsfwInstructions}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`;
 
       const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
         method: 'POST',
@@ -2902,7 +2913,7 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
           messages: [
             {
               role: 'system',
-              content: `${modeSystemPrompt}\n\n${modeContext}\n\nAdditional instructions:\n${getModeSystemPrompt(mode)}${nsfwInstructions}\n\nCURRENT USER'S PREVIEW PROMPT:\n${prompt}`,
+              content: finalSystemPrompt,
             },
             ...updatedMessages,
           ],
