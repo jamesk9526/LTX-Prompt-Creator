@@ -188,11 +188,30 @@ Provide analysis in this EXACT JSON format. Output ONLY the JSON, nothing else:
       }
     }
 
+    // Helper function to normalize array items to strings
+    const normalizeToStrings = (arr: any[]): string[] => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map(item => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          // If it's an object with name/description, combine them
+          if (item.name && item.description) {
+            return `${item.name}: ${item.description}`;
+          }
+          if (item.name) return item.name;
+          if (item.description) return item.description;
+          // Try to stringify if it's some other object
+          return JSON.stringify(item);
+        }
+        return String(item);
+      }).filter(s => s.trim().length > 0);
+    };
+
     const result = {
       score: Math.min(100, Math.max(0, parseInt(analysis.score) || 0)),
-      strengths: Array.isArray(analysis.strengths) ? analysis.strengths : [],
-      improvements: Array.isArray(analysis.improvements) ? analysis.improvements : [],
-      missing: Array.isArray(analysis.missing) ? analysis.missing : [],
+      strengths: normalizeToStrings(analysis.strengths),
+      improvements: normalizeToStrings(analysis.improvements),
+      missing: normalizeToStrings(analysis.missing),
     };
     
     console.log('analyzePromptQuality: Successfully parsed result:', result);

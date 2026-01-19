@@ -1486,6 +1486,7 @@ button.tiny {
 
 .chat-system-modal {
   max-width: 600px;
+  z-index: 10001;
 }
 
 .chat-system-textarea-modal {
@@ -1506,6 +1507,26 @@ button.tiny {
    ENHANCED CHAT UI - Modern & Futuristic
    ======================================== */
 
+/* Chat message actions (copy, regenerate) */
+.chat-message-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chat-message:hover .chat-message-actions {
+  opacity: 1;
+}
+
+.chat-message-actions button.tiny {
+  padding: 4px 8px;
+  font-size: 14px;
+  min-width: auto;
+  height: 28px;
+}
+
 /* Improved chat header spacing and layout */
 .chat-header {
   display: flex;
@@ -1523,9 +1544,142 @@ button.tiny {
   border-bottom: 1px solid rgba(124, 58, 237, 0.2);
 }
 
+.chat-panel.zen-mode .chat-header {
+  padding: 16px 24px;
+  background: transparent;
+  border-bottom: none;
+}
+
 .chat-panel.docked .chat-header {
   padding: 16px 18px;
   gap: 12px;
+}
+
+/* ========================================
+   ZEN MODE - Ultra-minimal fullscreen
+   ======================================== */
+
+.chat-panel.zen-mode.maximized {
+  background: rgba(0, 0, 0, 0.95);
+}
+
+.chat-panel.zen-mode .chat-title-block h3 {
+  opacity: 0.5;
+  font-size: 14px;
+}
+
+.chat-panel.zen-mode .chat-title-block .eyebrow {
+  display: none;
+}
+
+/* ========================================
+   KEYBOARD SHORTCUTS HELP OVERLAY
+   ======================================== */
+
+.keyboard-help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10002;
+  animation: fadeIn 0.2s ease;
+}
+
+.keyboard-help-panel {
+  background: linear-gradient(145deg, rgba(17, 17, 27, 0.98), rgba(13, 13, 22, 0.98));
+  border: 2px solid rgba(124, 58, 237, 0.4);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.keyboard-help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.keyboard-help-header h3 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.keyboard-help-content {
+  display: grid;
+  gap: 24px;
+}
+
+.shortcut-group h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.shortcut-item:hover {
+  background: rgba(124, 58, 237, 0.15);
+  transform: translateX(4px);
+}
+
+.shortcut-item kbd {
+  display: inline-block;
+  padding: 4px 10px;
+  background: linear-gradient(145deg, rgba(50, 50, 70, 0.8), rgba(30, 30, 45, 0.8));
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8b5cf6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin-right: 8px;
+}
+
+.shortcut-item span {
+  flex: 1;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
 }
 
 .chat-header-left {
@@ -1880,6 +2034,7 @@ button.tiny {
 
 .chat-settings-modal {
   max-width: 700px;
+  z-index: 10001;
 }
 
 .chat-panel.maximized ~ * .chat-settings-modal {

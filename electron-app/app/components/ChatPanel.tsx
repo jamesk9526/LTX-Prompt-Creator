@@ -109,6 +109,67 @@ export default function ChatPanel({
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const [chatSettingsOpen, setChatSettingsOpen] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [presentationMode, setPresentationMode] = useState(false);
+
+  // Keyboard shortcuts for fullscreen chat
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!chatOpen) return;
+
+      // ESC - Exit fullscreen
+      if (e.key === 'Escape' && chatMaximized && setChatMaximized) {
+        e.preventDefault();
+        setChatMaximized(false);
+        setZenMode(false);
+        setPresentationMode(false);
+      }
+
+      // ? - Show keyboard help (only in fullscreen)
+      if (e.key === '?' && chatMaximized && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+          e.preventDefault();
+          setShowKeyboardHelp(!showKeyboardHelp);
+        }
+      }
+
+      // Ctrl/Cmd + Z - Toggle zen mode
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && chatMaximized) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+          e.preventDefault();
+          setZenMode(!zenMode);
+          showToast(zenMode ? 'Zen mode disabled' : 'Zen mode enabled');
+        }
+      }
+
+      // Ctrl/Cmd + Shift + P - Toggle presentation mode
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P' && chatMaximized) {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+          e.preventDefault();
+          setPresentationMode(!presentationMode);
+          showToast(presentationMode ? 'Presentation mode disabled' : 'Presentation mode enabled');
+        }
+      }
+
+      // F11 - Toggle fullscreen
+      if (e.key === 'F11' && setChatMaximized) {
+        e.preventDefault();
+        setChatMaximized(!chatMaximized);
+        if (!chatMaximized && chatMinimized) setChatMinimized(false);
+        if (chatMaximized) {
+          setZenMode(false);
+          setPresentationMode(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [chatOpen, chatMaximized, setChatMaximized, chatMinimized, setChatMinimized, zenMode, presentationMode, showKeyboardHelp, showToast]);
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -124,11 +185,14 @@ export default function ChatPanel({
 
   // Parse quality analysis into structured data
   const parseQualityAnalysis = (content: string) => {
-    const scoreMatch = content.match(/\*\*Score:\s*(\d+)\/100\*\*/);    const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+    const scoreMatch = content.match(/\*\*Score:\s*(\d+)\/100\*\*/);
+    const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
     
-    const strengthsMatch = content.match(/\*\*Strengths:\*\*([\s\S]*?)\*\*Areas for Improvement:/);    const strengths = strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
+    const strengthsMatch = content.match(/\*\*Strengths:\*\*([\s\S]*?)\*\*Areas for Improvement:/);
+    const strengths = strengthsMatch ? strengthsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
     
-    const improvementsMatch = content.match(/\*\*Areas for Improvement:\*\*([\s\S]*?)\*\*Recommendation:/);    const improvements = improvementsMatch ? improvementsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
+    const improvementsMatch = content.match(/\*\*Areas for Improvement:\*\*([\s\S]*?)\*\*Recommendation:/);
+    const improvements = improvementsMatch ? improvementsMatch[1].trim().split('\n').filter(s => s.trim().startsWith('•')).map(s => s.replace('•', '').trim()) : [];
     
     const recommendationMatch = content.match(/\*\*Recommendation:\*\*\s*(.+)/);
     const recommendation = recommendationMatch ? recommendationMatch[1].trim() : '';
@@ -173,7 +237,7 @@ export default function ChatPanel({
   return (
     <>
       {/* Chat Panel */}
-      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''} ${docked ? 'docked' : ''} ${chatMaximized ? 'maximized' : ''}`}>
+      <div className={`chat-panel ${chatMinimized ? 'minimized' : ''} ${docked ? 'docked' : ''} ${chatMaximized ? 'maximized' : ''} ${zenMode ? 'zen-mode' : ''} ${presentationMode ? 'presentation-mode' : ''}`}>
         <div className="chat-header">
           <div className="chat-header-left">
             <div className="chat-title-block">
@@ -308,7 +372,7 @@ Please review this context and let me know how I can optimize my prompts for the
           </div>
         </div>
 
-        {!chatMinimized && (
+        {!chatMinimized && !zenMode && (
           <div className="chat-meta-strip">
             <div className="chat-meta-left">
               <span className={`chat-pill ${ollamaSettings.enabled ? 'online' : 'offline'}`}>
@@ -766,6 +830,53 @@ Please review this context and let me know how I can optimize my prompts for the
                 placeholder="Define how the AI should behave..."
                 rows={8}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard Help Overlay */}
+      {showKeyboardHelp && chatMaximized && (
+        <div className="keyboard-help-overlay" onClick={() => setShowKeyboardHelp(false)}>
+          <div className="keyboard-help-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="keyboard-help-header">
+              <h3>⌨️ Keyboard Shortcuts</h3>
+              <button className="ghost small" onClick={() => setShowKeyboardHelp(false)}>✕</button>
+            </div>
+            <div className="keyboard-help-content">
+              <div className="shortcut-group">
+                <h4>Navigation</h4>
+                <div className="shortcut-item">
+                  <kbd>ESC</kbd>
+                  <span>Exit fullscreen</span>
+                </div>
+                <div className="shortcut-item">
+                  <kbd>F11</kbd>
+                  <span>Toggle fullscreen</span>
+                </div>
+                <div className="shortcut-item">
+                  <kbd>?</kbd>
+                  <span>Show/hide this help</span>
+                </div>
+              </div>
+              <div className="shortcut-group">
+                <h4>View Modes</h4>
+                <div className="shortcut-item">
+                  <kbd>Ctrl</kbd> + <kbd>Z</kbd>
+                  <span>Toggle Zen mode (hide UI)</span>
+                </div>
+              </div>
+              <div className="shortcut-group">
+                <h4>Input</h4>
+                <div className="shortcut-item">
+                  <kbd>Enter</kbd>
+                  <span>Send message</span>
+                </div>
+                <div className="shortcut-item">
+                  <kbd>Shift</kbd> + <kbd>Enter</kbd>
+                  <span>New line</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
