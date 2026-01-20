@@ -441,7 +441,7 @@ const DEFAULT_OLLAMA_SETTINGS: OllamaSettings = {
 - Model-appropriate terminology and structure
 - Preservation of original creative intent
 - Professional quality suitable for production use`,
-  temperature: 0.7,
+  temperature: 0.7, // Higher creativity for prompt expansion
 };
 
 const DEFAULT_UI_PREFS: UiPrefs = {
@@ -1798,7 +1798,45 @@ export default function WizardPage() {
 
       const modelToUse = chatModel || ollamaSettings.model;
       try {
-        const systemSpec = `You are an assistant that outputs ONLY JSON for UI actions.\n\nTask: Given a creative prompt, produce a JSON ARRAY of actions to populate a wizard UI.\nSchema (strict):\n- setFieldValue { type: 'setFieldValue', field: string, value: string }\n- clearField { type: 'clearField', field: string }\n- bulkSetValues { type: 'bulkSetValues', entries: Record<string,string> }\n- setMode { type: 'setMode', value: 'cinematic'|'classic'|'drone'|'animation'|'photography'|'nsfw' }\n- setStep { type: 'setStep', value: number }\n- setEditorTone { type: 'setEditorTone', value: 'melancholic'|'balanced'|'energetic'|'dramatic' }\n- setNSFW { type: 'setNSFW', value: boolean }\n- togglePreview { type: 'togglePreview' }\n- openSettings { type: 'openSettings' }\n- updateUiPref { type: 'updateUiPref', key: string, value: any }\n- updateOllamaSetting { type: 'updateOllamaSetting', key: string, value: any }\n- setChatModel { type: 'setChatModel', value: string }\n- openChatSystemPrompt { type: 'openChatSystemPrompt' }\n- setChatMinimized { type: 'setChatMinimized', value: boolean }\n\nValid field names (must use exactly): ${ACTION_VALID_FIELDS.join(', ')}\n\nRules:\n- Output MUST be a valid JSON array. No markdown, no prose. No code fences.\n- Prefer bulkSetValues for multiple field updates.\n- Use only valid field names; do not invent new keys.\n- Do not include any wrapper besides the array.`;
+        const systemSpec = `You are a strict JSON action generator. Your ONLY output is valid JSON arrays.
+
+CRITICAL: NO MARKDOWN, NO CODE FENCES, NO EXPLANATIONS, NO PROSE.
+Output format: Start with [ and end with ] - nothing else.
+
+Task: Convert creative prompts into JSON action arrays for UI control.
+
+Action Schema (ALL required fields must be present):
+- setFieldValue { "type": "setFieldValue", "field": string, "value": string }
+- clearField { "type": "clearField", "field": string }
+- bulkSetValues { "type": "bulkSetValues", "entries": { "field1": "value1", "field2": "value2" } }
+- setMode { "type": "setMode", "value": "cinematic"|"classic"|"drone"|"animation"|"photography"|"nsfw" }
+- setStep { "type": "setStep", "value": number }
+- setEditorTone { "type": "setEditorTone", "value": "melancholic"|"balanced"|"energetic"|"dramatic" }
+- setNSFW { "type": "setNSFW", "value": boolean }
+- togglePreview { "type": "togglePreview" }
+- openSettings { "type": "openSettings" }
+- updateUiPref { "type": "updateUiPref", "key": string, "value": any }
+- updateOllamaSetting { "type": "updateOllamaSetting", "key": string, "value": any }
+- setChatModel { "type": "setChatModel", "value": string }
+- openChatSystemPrompt { "type": "openChatSystemPrompt" }
+- setChatMinimized { "type": "setChatMinimized", "value": boolean }
+
+Valid field names (EXACT match required): ${ACTION_VALID_FIELDS.join(', ')}
+
+STRICT RULES:
+1. Output MUST start with [ and end with ]
+2. NO markdown code blocks (no \`\`\`json)
+3. NO explanatory text before or after the JSON
+4. Use bulkSetValues for 3+ field updates
+5. Field names must match exactly from valid list
+6. All strings must use double quotes
+7. Boolean values: true or false (lowercase)
+8. Numbers must be valid integers (no quotes)
+
+EXAMPLE OUTPUT (follow this format exactly):
+[{"type":"bulkSetValues","entries":{"subject":"a beautiful sunset","lighting":"golden hour"}},{"type":"setMode","value":"cinematic"}]
+
+If you output ANYTHING other than a JSON array, you have FAILED.`;
 
         const response = await fetch(`${ollamaSettings.apiEndpoint}/api/chat`, {
           method: 'POST',
@@ -2919,7 +2957,7 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
           ],
           stream: true,
           options: {
-            temperature: ollamaSettings.temperature,
+            temperature: 0.5, // Lower for more consistent, reliable chat responses
           },
           keep_alive: 0,
         }),
@@ -3414,6 +3452,110 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
         onResumeOllama={resumeOllama}
       />
       <div className="topbar-spacer" aria-hidden="true" />
+
+      {/* Tool Dock */}
+      <div className="tool-dock" role="toolbar" aria-label="Quick actions">
+        <div className="tool-dock-section">
+          <span className="tool-dock-label">Quick Actions</span>
+          <button
+            className="tool-dock-button primary"
+            onClick={() => {
+              resetCurrentStep();
+              showToast('Step cleared');
+            }}
+            title="Clear current step (Ctrl+Delete)"
+          >
+            ✨ Clear Step
+          </button>
+          <button
+            className="tool-dock-button"
+            onClick={() => resetWizard()}
+            title="Reset all steps to defaults"
+          >
+            🔄 Reset All
+          </button>
+        </div>
+
+        <div className="tool-dock-section">
+          <span className="tool-dock-label">Tools</span>
+          <button
+            className="tool-dock-button"
+            onClick={() => setBatchOpen(true)}
+            title="Generate prompt variations"
+          >
+            🎲 Batch
+          </button>
+          <button
+            className="tool-dock-button"
+            onClick={() => setTemplatesOpen(true)}
+            title="Load preset scenarios"
+          >
+            📋 Templates
+          </button>
+          <button
+            className="tool-dock-button"
+            onClick={() => setProjectsOpen(true)}
+            title="Manage projects"
+          >
+            📁 Projects
+          </button>
+          <button
+            className="tool-dock-button"
+            onClick={() => setHistoryOpen(true)}
+            title="View prompt history"
+          >
+            ⏱️ History
+          </button>
+        </div>
+
+        <div className="tool-dock-section">
+          <span className="tool-dock-label">Advanced</span>
+          <button
+            className="tool-dock-button"
+            onClick={() => setCsvBuilderOpen(true)}
+            title="Build from CSV data"
+          >
+            📊 CSV Builder
+          </button>
+          {ollamaConnected && (
+            <button
+              className="tool-dock-button"
+              onClick={() => {
+                setSettingsMode(mode);
+                setSettingsField('genre');
+                setSettingsOpen(true);
+              }}
+              title="Ollama AI suggestions"
+              style={{ color: '#a78bfa' }}
+            >
+              🤖 Ollama
+            </button>
+          )}
+        </div>
+
+        <div className="tool-dock-spacer" />
+
+        <div className="tool-dock-section">
+          <button
+            className="tool-dock-button"
+            onClick={() => {
+              setSettingsMode(mode);
+              setSettingsField('genre');
+              setSettingsOpen(true);
+            }}
+            title="Settings (Ctrl+,)"
+          >
+            ⚙️ Settings
+          </button>
+          <button
+            className="tool-dock-button"
+            onClick={() => setProjectsOpen(true)}
+            title="Show keyboard shortcuts"
+          >
+            ⌨️ Help
+          </button>
+        </div>
+      </div>
 
 
 
