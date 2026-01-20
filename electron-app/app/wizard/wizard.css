@@ -1305,14 +1305,14 @@ button.tiny {
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: var(--panel);
+  background: var(--panel-strong);
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: var(--panel);
+  background: var(--border-strong);
   background-clip: padding-box;
 }
 
@@ -2295,10 +2295,7 @@ button.tiny {
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-  background: var(--panel);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
 }
 
 .keyboard-help-content {
