@@ -1,34 +1,30 @@
 :root {
-  /* Flat Modern Zen Theme */
-  --bg: #0a0a0f;
-  --panel: rgba(13, 13, 22, 0.95);
-  --panel-strong: rgba(10, 10, 18, 0.98);
-  --text: #e8e6f0;
+  /* GitHub Dark - Flat & Zen Theme */
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-strong: #21262d;
+  --text: #c9d1d9;
   --fg: var(--text);
-  --muted: rgba(232, 230, 240, 0.55);
-  --accent: #8b5cf6;
-  --accent-strong: #7c3aed;
-  --dream: rgba(139, 92, 246, 0.06);
-  --dream2: rgba(124, 58, 237, 0.04);
-  --border: rgba(139, 92, 246, 0.3);
-  --border-strong: rgba(124, 58, 237, 0.5);
-  --radius: 8px;
-  --radius-sm: 6px;
-  --shadow: none; /* Flat design - no shadows */
-  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.12);
-  --grid-gap: 16px;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-strong: #1f6feb;
+  --border: #30363d;
+  --border-strong: #484f58;
+  --radius: 6px;
+  --radius-sm: 3px;
+  
+  /* Flat design - no shadows, no gradients */
+  --shadow: none;
+  --shadow-subtle: none;
+  
+  --grid-gap: 12px;
   --step-width: min(1440px, calc(100% - 24px));
-  --preview-scale: 0.92;
-  --preview-line-height: 1.25;
-  --input-bg: rgba(255, 255, 255, 0.03);
-  --input-bg-hover: rgba(255, 255, 255, 0.05);
+  --preview-scale: 0.95;
+  --preview-line-height: 1.4;
+  --input-bg: #0d1117;
+  --input-bg-hover: #161b22;
   
-  /* Zen breathing animation */
-  --breath-duration: 4s;
-  --breath-opacity-min: 0.4;
-  --breath-opacity-max: 1;
-  
-  /* Spacing System */
+  /* Spacing System - clean and minimal */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 12px;
@@ -41,11 +37,9 @@
   --transition-fast: 0.15s;
   --transition-normal: 0.2s;
   --transition-slow: 0.3s;
-  --transition-slowest: 0.4s;
-  --easing-ease-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --easing-ease-in-out: cubic-bezier(0.4, 0, 0.6, 1);
+  --easing: cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* Elevation System (z-index layers) */
+  /* Elevation System (z-index) */
   --z-base: 0;
   --z-dropdown: 100;
   --z-sticky: 50;
@@ -73,7 +67,7 @@ body {
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -88,7 +82,7 @@ body {
   width: 100%;
   height: 48px;
   background: var(--panel-strong);
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
 }
@@ -144,7 +138,7 @@ body {
   right: 0;
   height: 64px;
   z-index: 61;
-  background: linear-gradient(180deg, rgba(12, 13, 16, 0.95) 0%, rgba(12, 13, 16, 0.92) 100%);
+  background: var(--panel);
   border-bottom: 2px solid var(--border);
   padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
@@ -652,7 +646,6 @@ body {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
 }
 
 .tool-slider {
@@ -673,14 +666,12 @@ body {
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
 }
 
 .tool-slider::-webkit-slider-thumb:hover {
   width: 16px;
   height: 16px;
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
 }
 
 .tool-slider::-moz-range-thumb {
@@ -690,14 +681,12 @@ body {
   background: var(--accent);
   cursor: pointer;
   border: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
 }
 
 .tool-slider::-moz-range-thumb:hover {
   width: 16px;
   height: 16px;
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.4);
 }
 
 .slider-hints {
@@ -720,7 +709,6 @@ body {
   background: var(--panel-strong);
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  backdrop-filter: blur(6px);
   z-index: 70;
   animation: panelIn 550ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -945,7 +933,6 @@ body {
 
 .chat-nav-btn.disabled:hover {
   transform: none;
-  box-shadow: none;
 }
 
 /* Chat Panel */
@@ -1066,10 +1053,8 @@ body {
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid rgba(124, 58, 237, 0.2);
-  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.08), transparent);
+  background: var(--panel);
   gap: 12px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Compact header for docked mode */
@@ -1234,7 +1219,6 @@ body {
 
 .chat-model-selector:focus {
   background: rgba(20, 21, 24, 1);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
 }
 
 .chat-meta-strip {
@@ -1296,7 +1280,7 @@ button.tiny {
   flex-direction: column;
   gap: 16px;
   max-height: 600px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 40px);
+  background: var(--panel);
 }
 
 .chat-panel.docked .chat-messages {
@@ -1321,14 +1305,14 @@ button.tiny {
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.4), rgba(124, 58, 237, 0.6));
+  background: var(--panel);
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.6), rgba(124, 58, 237, 0.8));
+  background: var(--panel);
   background-clip: padding-box;
 }
 
@@ -1581,7 +1565,6 @@ button.tiny {
 .code-block-buttons .code-copy-btn:last-child:hover {
   background: rgba(124, 58, 237, 0.5);
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
 }
 
 .code-block-content {
@@ -1617,7 +1600,7 @@ button.tiny {
 }
 
 .chat-message.user .chat-message-content {
-  background: linear-gradient(140deg, rgba(139, 92, 246, 0.16), rgba(124, 58, 237, 0.12));
+  background: var(--panel);
   border-color: var(--border-strong);
 }
 
@@ -1642,14 +1625,14 @@ button.tiny {
   display: flex;
   gap: 10px;
   flex-direction: column;
-  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.03), transparent);
+  background: var(--panel);
 }
 
 .chat-panel.docked .chat-input-area {
   padding: 12px 14px;
   gap: 8px;
   border-top: 1px solid rgba(124, 58, 237, 0.15);
-  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.04), rgba(124, 58, 237, 0.01));
+  background: var(--panel);
 }
 
 .chat-input-buttons {
@@ -1770,8 +1753,7 @@ button.tiny {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid rgba(124, 58, 237, 0.15);
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), transparent);
-  backdrop-filter: blur(10px);
+  background: var(--panel);
   gap: 16px;
 }
 
@@ -1838,7 +1820,6 @@ button.tiny {
   right: 0;
   bottom: 0;
   pointer-events: none;
-  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.2);
   z-index: 1;
 }
 
@@ -1857,12 +1838,11 @@ button.tiny {
   top: 0;
   bottom: 0;
   width: 280px;
-  background: linear-gradient(180deg, rgba(17, 17, 27, 0.98) 0%, rgba(13, 13, 22, 0.98) 100%);
+  background: var(--panel);
   border-left: 2px solid rgba(124, 58, 237, 0.3);
   display: flex;
   flex-direction: column;
   animation: slideInRight 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideInRight {
@@ -1922,7 +1902,7 @@ button.tiny {
 
 .stat-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.3), transparent);
+  background: var(--panel);
   margin: 8px 0;
 }
 
@@ -1993,7 +1973,7 @@ button.tiny {
 
 .chat-split-divider {
   width: 2px;
-  background: linear-gradient(180deg, transparent, rgba(124, 58, 237, 0.5), transparent);
+  background: var(--panel);
   cursor: col-resize;
   position: absolute;
   height: 100%;
@@ -2002,7 +1982,7 @@ button.tiny {
 }
 
 .chat-split-divider:hover {
-  background: linear-gradient(180deg, transparent, rgba(124, 58, 237, 0.8), transparent);
+  background: var(--panel);
   width: 3px;
 }
 
@@ -2014,12 +1994,11 @@ button.tiny {
   position: fixed;
   width: 280px;
   height: 320px;
-  background: linear-gradient(135deg, rgba(17, 17, 27, 0.98), rgba(13, 13, 22, 0.98));
+  background: var(--panel);
   border: 2px solid rgba(124, 58, 237, 0.4);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(124, 58, 237, 0.2);
   animation: pipSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: grab;
   z-index: 9998;
@@ -2241,10 +2220,8 @@ button.tiny {
 
 @keyframes recordingPulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.2);
   }
 }
 
@@ -2277,7 +2254,6 @@ button.tiny {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2319,7 +2295,7 @@ button.tiny {
   font-size: 24px;
   font-weight: 600;
   margin: 0;
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  background: var(--panel);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2358,7 +2334,7 @@ button.tiny {
 .shortcut-item kbd {
   display: inline-block;
   padding: 4px 10px;
-  background: linear-gradient(145deg, rgba(50, 50, 70, 0.8), rgba(30, 30, 45, 0.8));
+  background: var(--panel);
   border: 1px solid rgba(124, 58, 237, 0.3);
   border-radius: 6px;
   font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
@@ -2486,7 +2462,6 @@ button.tiny {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  backdrop-filter: blur(12px);
   position: relative;
   overflow: hidden;
 }
@@ -2695,14 +2670,12 @@ button.tiny {
 }
 
 .quality-actions .primary {
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: var(--panel);
   border: 2px solid rgba(124, 58, 237, 0.5);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
 }
 
 .quality-actions .primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.4);
 }
 
 .quality-actions .ghost {
@@ -2753,13 +2726,11 @@ button.tiny {
   background: rgba(124, 58, 237, 0.1);
   border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.2);
 }
 
 .mode-card.active {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.3) 100%);
+  background: var(--panel);
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
 .mode-icon {
@@ -2841,7 +2812,6 @@ button.tiny {
 .chat-system-textarea-modal:focus {
   background: rgba(0, 0, 0, 0.4);
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
 }
 
 .chat-system-textarea-modal::placeholder {
@@ -2854,18 +2824,17 @@ button.tiny {
   left: 0;
   right: 0;
   height: 8px;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.18), rgba(124, 58, 237, 0.08));
+  background: var(--panel);
   border-radius: 0;
   overflow: hidden;
   margin: 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   z-index: 100;
 }
 
 .progress-track {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-strong) 60%, #b5ffde 100%);
+  background: var(--panel);
   transition: width 650ms ease;
   filter: drop-shadow(0 0 14px rgba(124, 58, 237, 0.38));
 }
@@ -2930,7 +2899,6 @@ button.tiny {
   background: var(--accent);
   border-color: transparent;
   transform: scale(1.15);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
 .progress-pip:hover::after {
@@ -2998,7 +2966,7 @@ button.tiny {
   margin-bottom: 32px;
   padding-bottom: 24px;
   border-bottom: 2px solid var(--border);
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+  background: var(--panel);
   padding: 24px;
   border-radius: var(--radius-sm);
   position: relative;
@@ -3013,7 +2981,7 @@ button.tiny {
 
 .analyze-quality-btn {
   padding: 10px 18px;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  background: var(--panel);
   border: none;
   border-radius: 8px;
   color: white;
@@ -3021,12 +2989,10 @@ button.tiny {
   font-weight: 600;
   cursor: pointer;
   transition: all 180ms ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .analyze-quality-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 
 .analyze-quality-btn:disabled {
@@ -3037,7 +3003,7 @@ button.tiny {
 
 .auto-complete-btn {
   padding: 10px 18px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--panel);
   border: none;
   border-radius: 8px;
   color: white;
@@ -3045,12 +3011,10 @@ button.tiny {
   font-weight: 600;
   cursor: pointer;
   transition: all 180ms ease;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .auto-complete-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
 }
 
 .auto-complete-btn:disabled {
@@ -3061,7 +3025,7 @@ button.tiny {
 
 .style-transfer-btn {
   padding: 10px 18px;
-  background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+  background: var(--panel);
   border: none;
   border-radius: 8px;
   color: white;
@@ -3069,12 +3033,10 @@ button.tiny {
   font-weight: 600;
   cursor: pointer;
   transition: all 180ms ease;
-  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
 }
 
 .style-transfer-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
 }
 
 .style-transfer-btn:disabled {
@@ -3373,7 +3335,6 @@ article.step.active {
 
 .mode-card.active {
   border-color: transparent;
-  box-shadow: none;
   background: transparent;
   transform: none;
 }
@@ -3499,7 +3460,6 @@ input:checked + .slider::before { transform: translateX(22px); }
 .field-tip:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18);
 }
 
 .field-tip-bubble {
@@ -3516,7 +3476,6 @@ input:checked + .slider::before { transform: translateX(22px); }
   font-size: 13px;
   line-height: 1.5;
   letter-spacing: 0.1px;
-  box-shadow: 0 18px 36px rgba(27, 20, 13, 0.35);
   opacity: 0;
   pointer-events: none;
   transition: opacity 160ms ease, transform 160ms ease;
@@ -3648,7 +3607,6 @@ input[type="text"]:hover {
 
 input[type="text"]:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 input[type="text"]::placeholder {
@@ -3678,7 +3636,6 @@ select:hover {
 
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 textarea {
@@ -3702,7 +3659,6 @@ textarea:hover {
 
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 textarea::placeholder {
@@ -3826,8 +3782,6 @@ textarea {
   width: 100%;
   background: rgba(12, 13, 16, 0.95);
   border-top: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3), 
               0 -1px 0 rgba(139, 92, 246, 0.15);
   animation: stickyBarIn 0.3s ease-out;
@@ -3904,7 +3858,6 @@ button:hover {
 button:focus-visible { 
   outline: none; 
   border-color: var(--accent);
-  box-shadow: none;
 }
 
 button.primary { 
@@ -3915,7 +3868,6 @@ button.primary {
 
 button.primary:hover { 
   background: var(--accent-strong); 
-  box-shadow: none;
 }
 
 button:disabled { 
@@ -3947,8 +3899,6 @@ button.ghost {
   position: fixed;
   inset: 0;
   background: rgba(2, 4, 11, 0.6);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3969,11 +3919,8 @@ button.ghost {
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(12, 13, 16, 0.95);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
   padding: 10px;
   animation: panelIn 300ms cubic-bezier(0.22, 1, 0.36, 1);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
 }
 
 @keyframes panelIn {
@@ -4056,7 +4003,6 @@ button.ghost {
 .tab.active {
   border-color: var(--accent);
   background: rgba(139, 92, 246, 0.12);
-  box-shadow: none;
 }
 
 .settings-body {
@@ -4158,7 +4104,6 @@ button.ghost {
   border-radius: 8px;
   padding: 4px 4px 4px 0;
   background: rgba(139, 92, 246, 0.12);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.18);
   transition: all 0.2s ease;
 }
 
@@ -4201,7 +4146,6 @@ button.ghost {
   border-color: var(--accent);
   background: rgba(139, 92, 246, 0.18);
   color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.12);
 }
 
 .range-hint {
@@ -4313,8 +4257,6 @@ button.ghost {
   white-space: nowrap;
   transition: all 0.2s ease;
 }
-.multi-add:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15); }
-.multi-add:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 
 .quick-chip {
   padding: 8px 12px;
@@ -4333,8 +4275,6 @@ button.ghost {
   opacity: 0.7;
   margin-left: 6px;
 }
-.quick-chip:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15); }
-.quick-chip:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 /* Dark theme panel overrides for common light backgrounds */
 .friend-bubble,
 .onboard-guide,
@@ -4353,8 +4293,6 @@ button.ghost {
   color: var(--text);
 }
 
-.mode-card:hover { box-shadow: none; }
-.mode-card.active { box-shadow: none; }
 
 /* Additional dark overrides */
 .field {
@@ -4486,7 +4424,6 @@ button.ghost {
 
 .batch-item-compact:hover {
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .batch-preview {
@@ -4578,7 +4515,6 @@ button.ghost {
 .history-search:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.15);
   background: var(--panel);
 }
 
@@ -4617,7 +4553,6 @@ button.ghost {
 .history-item-card:hover {
   border-color: var(--accent);
   background: var(--panel);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);
 }
 
 .history-header {
@@ -4766,7 +4701,6 @@ button.ghost {
 .ollama-result-text:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
 .error-box {
@@ -4812,7 +4746,6 @@ button.ghost {
   z-index: 100;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
   animation: slideInRight 0.3s ease;
 }
 
@@ -5604,7 +5537,7 @@ button.danger:hover {
 
 /* Continue Banner */
 .continue-banner {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  background: var(--panel);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 12px;
   padding: 16px;
