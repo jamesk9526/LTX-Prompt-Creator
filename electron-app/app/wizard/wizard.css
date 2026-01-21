@@ -1483,7 +1483,11 @@ button.tiny {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(88, 166, 255, 0.2) 100%);
   box-shadow: 
     0 8px 20px rgba(139, 92, 246, 0.4),
-    0 0 0 4px rgba(139, 92, 246, 0.1);\n}\n\n.chat-avatar:hover::after {\n  opacity: 0.3;
+    0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+.chat-avatar:hover::after {
+  opacity: 0.3;
 }
 
 .chat-message-body {
