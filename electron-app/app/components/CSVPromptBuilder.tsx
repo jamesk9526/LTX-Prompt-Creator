@@ -138,10 +138,11 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
   // Generate CSV content
   const generateCSVContent = useCallback((): string => {
     const header = 'Number,positive,negative\n';
-    const content = rows.map(row => {
-      const numbers = rows.map(r => parseInt(r.number) || 0);
-      const maxNumber = Math.max(...numbers, 0);
-      const num = row.number || String(maxNumber + 1);
+    const numbers = rows.map(r => parseInt(r.number) || 0);
+    const maxNumber = Math.max(...numbers, 0);
+    
+    const content = rows.map((row, index) => {
+      const num = row.number || String(maxNumber + index + 1);
       const pos = `"${row.positive.replace(/"/g, '""')}"`;
       const neg = `"${row.negative.replace(/"/g, '""')}"`;
       return `${num},${pos},${neg}`;
@@ -210,14 +211,26 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
         negative: '' // Keep negative blank as per requirement
       };
       
-      return [...prevRows, newRow];
+      const updatedRows = [...prevRows, newRow];
+      
+      // Trigger auto-save immediately with updated rows
+      if (autoSave && currentFile) {
+        const header = 'Number,positive,negative\n';
+        const content = updatedRows.map(row => {
+          const num = row.number;
+          const pos = `"${row.positive.replace(/"/g, '""')}"`;
+          const neg = `"${row.negative.replace(/"/g, '""')}"`;
+          return `${num},${pos},${neg}`;
+        }).join('\n');
+        const csvContent = header + content;
+        
+        localStorage.setItem(`csv_data_${currentFile}`, csvContent);
+        localStorage.setItem('csv_last_save_time', Date.now().toString());
+      }
+      
+      return updatedRows;
     });
-    
-    // Trigger auto-save after adding
-    setTimeout(() => {
-      autoSaveData();
-    }, 100);
-  }, [autoSaveData]);
+  }, [autoSave, currentFile]);
   
   // Expose addRowWithData for external use
   useEffect(() => {
