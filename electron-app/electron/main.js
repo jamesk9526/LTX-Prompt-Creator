@@ -227,6 +227,20 @@ ipcMain.on('close-chat-window', () => {
   }
 });
 
+// Handle CSV file saves
+ipcMain.on('save-csv-file', (event, { filePath, content }) => {
+  const fs = require('fs');
+  try {
+    // Write the file to disk
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log('CSV file saved:', filePath);
+    event.sender.send('csv-file-saved', { success: true, filePath });
+  } catch (error) {
+    console.error('Failed to save CSV file:', error);
+    event.sender.send('csv-file-saved', { success: false, error: error.message });
+  }
+});
+
 // Cleanup when app quits
 app.on('before-quit', () => {
   // server.js doesn't keep a persistent process, but ensure clean shutdown
