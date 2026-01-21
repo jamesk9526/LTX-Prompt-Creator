@@ -731,6 +731,34 @@ Please review this context and let me know how I can optimize my prompts for the
                 Copy
               </button>
               <button
+                className="ghost small"
+                type="button"
+                onClick={() => {
+                  // Find the last assistant message with code block
+                  for (let i = chatMessages.length - 1; i >= 0; i--) {
+                    if (chatMessages[i].role === 'assistant') {
+                      const codeMatch = chatMessages[i].content.match(/```prompt\n([\s\S]*?)\n```/);
+                      if (codeMatch) {
+                        const promptText = codeMatch[1].trim();
+                        // Add to CSV using the global function
+                        if (typeof (window as any).csvBuilderAddRow === 'function') {
+                          (window as any).csvBuilderAddRow(promptText);
+                          showToast('✓ Saved to CSV');
+                        } else {
+                          showToast('⚠️ Please open CSV Builder first');
+                        }
+                        return;
+                      }
+                    }
+                  }
+                  showToast('No prompt found in chat');
+                }}
+                title="Save last prompt to CSV (negative field will be blank)"
+                aria-label="Save to CSV"
+              >
+                💾 CSV
+              </button>
+              <button
                 className="icon-btn small"
                 type="button"
                 onClick={() => setChatSystemPromptModalOpen(true)}

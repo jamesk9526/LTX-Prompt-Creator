@@ -32,6 +32,8 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
   const [autoSave, setAutoSave] = useState(false);
   const [statusMessage, setStatusMessage] = useState('No file loaded');
   const [statusColor, setStatusColor] = useState<'gray' | 'green' | 'orange' | 'blue'>('gray');
+  const [defaultFilePath, setDefaultFilePath] = useState<string>('');
+  const [showDefaultFileInput, setShowDefaultFileInput] = useState(false);
 
   // Edit form state (number is automatic, only positive/negative are editable)
   const [editPositive, setEditPositive] = useState('');
@@ -39,7 +41,7 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize with 3 empty rows
+  // Initialize with 3 empty rows and load default file path
   useEffect(() => {
     if (isOpen && rows.length === 0) {
       const initialRows: CSVRow[] = [
@@ -49,7 +51,24 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
       ];
       setRows(initialRows);
     }
+    
+    // Load default file path from localStorage
+    if (isOpen) {
+      const savedPath = localStorage.getItem('csv_default_file_path');
+      if (savedPath) {
+        setDefaultFilePath(savedPath);
+        setCurrentFile(savedPath);
+        setAutoSave(true);
+      }
+    }
   }, [isOpen, rows.length]);
+  
+  // Update status when auto-save is enabled
+  useEffect(() => {
+    if (autoSave && currentFile) {
+      updateStatus(`Auto-saving to: ${currentFile}`, 'green');
+    }
+  }, [autoSave, currentFile, updateStatus]);
 
   // Get next available number
   const getNextNumber = (): string => {
@@ -124,8 +143,11 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     if (!autoSave || !currentFile) return;
 
     try {
-      // In a full Electron app, we'd use fs.writeFileSync here
-      // For now, we just update the status
+      const csvContent = generateCSVContent();
+      // Store CSV content in localStorage for browser-based auto-save
+      localStorage.setItem(`csv_data_${currentFile}`, csvContent);
+      localStorage.setItem('csv_last_save_time', Date.now().toString());
+      
       updateStatus(`✓ Saved to: ${currentFile}`, 'green');
       setTimeout(() => {
         updateStatus(`Auto-saving to: ${currentFile}`, 'green');
@@ -134,7 +156,7 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
       // Silent error handling for auto-save
       updateStatus('Auto-save failed', 'orange');
     }
-  }, [autoSave, currentFile, updateStatus]);
+  }, [autoSave, currentFile, rows, updateStatus]);
 
   // Update row from edit form
   const updateFromForm = useCallback((field: 'positive' | 'negative', value: string) => {
@@ -174,6 +196,37 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     }).join('\n');
     return header + content;
   };
+  
+  // Add a new row with data (for external use like chat-to-CSV)
+  const addRowWithData = useCallback((positiveText: string) => {
+    setRows(prevRows => {
+      const numbers = prevRows.map(r => parseInt(r.number) || 0);
+      const maxNumber = Math.max(...numbers, 0);
+      const nextNumber = String(maxNumber + 1);
+      
+      const newRow: CSVRow = {
+        id: String(Date.now()),
+        number: nextNumber,
+        positive: positiveText,
+        negative: '' // Keep negative blank as per requirement
+      };
+      
+      return [...prevRows, newRow];
+    });
+    
+    // Trigger auto-save after adding
+    setTimeout(() => {
+      autoSaveData();
+    }, 100);
+  }, [autoSaveData]);
+  
+  // Expose addRowWithData for external use
+  useEffect(() => {
+    if (isOpen) {
+      // Store the function reference globally for ChatPanel to use
+      (window as any).csvBuilderAddRow = addRowWithData;
+    }
+  }, [isOpen, addRowWithData]);
 
   // Save CSV
   const saveCSV = () => {
@@ -191,7 +244,27 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     document.body.removeChild(link);
     
     setCurrentFile(filename);
+    
+    // Save to localStorage as well
+    localStorage.setItem(`csv_data_${filename}`, csvContent);
+    
     updateStatus(`Saved to: ${filename}`, 'gray');
+  };
+  
+  // Set as default file
+  const setAsDefaultFile = () => {
+    if (!currentFile) {
+      updateStatus('Load or save a file first', 'orange');
+      return;
+    }
+    
+    localStorage.setItem('csv_default_file_path', currentFile);
+    setDefaultFilePath(currentFile);
+    setAutoSave(true);
+    updateStatus(`Set as default: ${currentFile}`, 'blue');
+    setTimeout(() => {
+      updateStatus(`Auto-saving to: ${currentFile}`, 'green');
+    }, 2000);
   };
 
   // Load CSV
@@ -271,7 +344,7 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
   // Toggle auto-save
   const toggleAutoSave = () => {
     if (!autoSave && !currentFile) {
-      updateStatus('Load a file to enable auto-save', 'orange');
+      updateStatus('Save a file or set default first', 'orange');
       return;
     }
     setAutoSave(!autoSave);
@@ -320,6 +393,14 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
             onChange={loadCSV}
             aria-label="Load CSV file"
           />
+          
+          <button 
+            className="csv-btn" 
+            onClick={setAsDefaultFile}
+            title="Set current file as default for auto-save"
+          >
+            ⭐ Set Default
+          </button>
           
           <div className="csv-toolbar-divider" />
           
