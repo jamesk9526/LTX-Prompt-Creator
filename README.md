@@ -46,9 +46,10 @@ A professional desktop app for creating video prompts with AI assistance. Build 
 - **Prompt Wizard** - Step-by-step guided prompt creation
 - **Multiple Modes** - Cinematic, Classic, Photography, Abstract, Experimental
 - **AI Chat** - Optional Ollama integration for assistance
+- **CSV Prompt Builder** - Create and manage CSV files with auto-save
 - **Projects** - Organize prompts in projects
 - **History** - Save and manage chat sessions
-- **Export** - JSON, Markdown, Plain Text
+- **Export** - JSON, Markdown, Plain Text, CSV
 
 ### AI Features (Optional Ollama)
 - Real-time chat with AI models
@@ -58,6 +59,7 @@ A professional desktop app for creating video prompts with AI assistance. Build 
 - NSFW content filtering
 
 ### Advanced Features
+- **CSV Prompt Management** - Auto-save CSV files with default path, save chat prompts to CSV
 - **Virtualized Chat** - Smooth performance with 1000+ messages
 - **Chat History** - Browse, search, and export conversations
 - **Keyboard Shortcuts** - Fast navigation

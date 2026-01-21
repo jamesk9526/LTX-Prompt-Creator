@@ -30,7 +30,8 @@ electron-app/
 │   │   ├── components/      # TopBar, PreviewSidebar, ToolsMenu
 │   │   └── modals/          # Settings, Ollama AI panel
 │   ├── components/          # Shared React components
-│   │   ├── ChatPanel.tsx    # AI chat integration
+│   │   ├── ChatPanel.tsx    # AI chat integration (with CSV export)
+│   │   ├── CSVPromptBuilder.tsx  # CSV prompt management with auto-save
 │   │   ├── VirtualizedChatPanel.tsx  # Performance-optimized chat
 │   │   ├── ChatHistorySidebar.tsx    # Session management
 │   │   ├── ErrorBoundary.tsx         # Error handling
@@ -70,6 +71,7 @@ File System / OS APIs / Ollama HTTP API
 - **Chat History**: localStorage with 10MB limit, 100 sessions max
 - **Project Data**: JSON files via Electron IPC (file system)
 - **System Prompts**: Text files loaded from file system
+- **CSV Data**: Auto-saved to localStorage with default file path support
 
 ---
 
@@ -340,6 +342,27 @@ export default function Component() {
 ---
 
 ## Key Features Implementation
+
+### CSV Prompt Builder
+
+**Features:**
+- Create and edit CSV files with Number, Positive, and Negative columns
+- Auto-save functionality with default file path setting
+- Direct integration with chat - save prompts to CSV with one click
+- Inspired by [ComfyUI CSV-to-Prompt](https://github.com/TharindaMarasingha/ComfyUI-CSV-to-Prompt)
+
+**Usage:**
+1. Open CSV Builder from the tools menu
+2. Click "⭐ Set Default" to designate a CSV file for auto-saving
+3. Enable "Auto-save" checkbox to save changes automatically
+4. In chat, click "💾 CSV" to add last prompt to CSV (negative field stays blank)
+
+**Storage:**
+```typescript
+localStorage.setItem('csv_default_file_path', filename);
+localStorage.setItem(`csv_data_${filename}`, csvContent);
+localStorage.setItem('csv_last_save_time', timestamp);
+```
 
 ### AI Actions System
 
