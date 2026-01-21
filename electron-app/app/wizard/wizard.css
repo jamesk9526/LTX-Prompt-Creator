@@ -49,6 +49,28 @@
   --z-tooltip: 10000;
   --z-notification: 10010;
   --z-fullscreen: 99999;
+  
+  /* Chat UI Enhancement Variables */
+  --chat-header-bg: rgba(22, 27, 34, 0.98);
+  --chat-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --chat-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --chat-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --chat-shadow-xl: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --chat-shadow-2xl: 0 12px 48px rgba(0, 0, 0, 0.3);
+  --accent-bg-subtle: rgba(88, 166, 255, 0.08);
+  --accent-bg-hover: rgba(88, 166, 255, 0.12);
+  --accent-border: rgba(88, 166, 255, 0.25);
+  --accent-border-hover: rgba(88, 166, 255, 0.4);
+  --accent-glow-sm: rgba(88, 166, 255, 0.1);
+  --accent-glow-md: rgba(88, 166, 255, 0.15);
+  --accent-glow-lg: rgba(88, 166, 255, 0.2);
+  --accent-shadow-sm: 0 2px 8px rgba(88, 166, 255, 0.05);
+  --accent-shadow-md: 0 4px 12px rgba(88, 166, 255, 0.1);
+  --accent-shadow-lg: 0 4px 12px rgba(88, 166, 255, 0.15);
+  --accent-ring: 0 0 0 1px rgba(88, 166, 255, 0.2);
+  --accent-ring-focus: 0 0 0 3px rgba(88, 166, 255, 0.1);
+  --spacing-4xl: 40px;
+  --spacing-5xl: 60px;
 }
 
 html, body {
@@ -951,7 +973,7 @@ body {
   animation: slideInUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   overflow: hidden;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(88, 166, 255, 0.1);
+  box-shadow: var(--chat-shadow-2xl), 0 0 0 1px var(--accent-glow-sm);
 }
 
 /* Docked chat: behaves as a sidebar column */
@@ -971,7 +993,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 2px 0 16px var(--chat-shadow-lg);
 }
 
 .chat-panel.minimized {
@@ -1062,8 +1084,8 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 18px 22px;
-  border-bottom: 1px solid rgba(88, 166, 255, 0.1);
-  background: rgba(22, 27, 34, 0.98);
+  border-bottom: 1px solid var(--accent-glow-sm);
+  background: var(--chat-header-bg);
   gap: 14px;
   backdrop-filter: blur(10px);
 }
@@ -1072,7 +1094,7 @@ body {
 .chat-panel.docked .chat-header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--border-strong);
-  background: rgba(22, 27, 34, 0.98);
+  background: var(--chat-header-bg);
   backdrop-filter: blur(10px);
 }
 
@@ -1304,7 +1326,7 @@ button.tiny {
 .chat-panel.maximized .chat-messages {
   max-height: none;
   height: calc(100vh - 180px);
-  padding: 40px 60px;
+  padding: var(--spacing-4xl) var(--spacing-5xl);
   gap: 32px;
 }
 
@@ -1314,7 +1336,7 @@ button.tiny {
   font-size: 15px;
   line-height: 1.7;
   padding: var(--spacing-xl) var(--spacing-2xl);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--chat-shadow-xl);
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -1442,7 +1464,7 @@ button.tiny {
   font-size: 14px;
   transition: all var(--transition-normal) var(--easing);
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--chat-shadow-md);
   position: relative;
 }
 
@@ -1451,7 +1473,7 @@ button.tiny {
   position: absolute;
   inset: -2px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent) 0%, rgba(88, 166, 255, 0.3) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-glow-lg) 100%);
   opacity: 0;
   transition: opacity var(--transition-normal);
   z-index: -1;
@@ -1468,7 +1490,7 @@ button.tiny {
   transform: scale(1.1);
   border-color: var(--accent);
   background: linear-gradient(135deg, var(--panel) 0%, var(--panel-strong) 100%);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3);
+  box-shadow: var(--accent-shadow-lg), 0 0 8px var(--accent-glow-lg);
 }
 
 .chat-avatar:hover::after {
@@ -1528,7 +1550,7 @@ button.tiny {
   white-space: pre-wrap;
   word-break: break-word;
   transition: all var(--transition-normal) var(--easing);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--chat-shadow-md);
   position: relative;
 }
 
@@ -1539,20 +1561,20 @@ button.tiny {
   border-radius: 12px;
   background: var(--panel-strong);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--chat-shadow-sm);
 }
 
 .chat-message:hover .chat-message-content {
   background: var(--panel-strong);
   border-color: var(--border-strong);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(88, 166, 255, 0.1);
+  box-shadow: var(--chat-shadow-lg), var(--accent-ring);
   transform: translateY(-1px);
 }
 
 .chat-panel.docked .chat-message:hover .chat-message-content {
   background: var(--panel-strong);
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.15), 0 0 0 1px rgba(88, 166, 255, 0.15);
+  box-shadow: var(--accent-shadow-lg), 0 0 0 1px var(--accent-glow-md);
 }
 
 .code-block {
@@ -1561,13 +1583,13 @@ button.tiny {
   border-radius: 8px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--chat-shadow-xl);
   transition: all var(--transition-normal);
 }
 
 .code-block:hover {
   border-color: var(--accent);
-  box-shadow: 0 6px 16px rgba(88, 166, 255, 0.15);
+  box-shadow: 0 6px 16px var(--accent-glow-md);
 }
 
 .code-block-header {
@@ -1596,7 +1618,7 @@ button.tiny {
 
 .code-copy-btn {
   padding: 5px 12px;
-  background: rgba(88, 166, 255, 0.1);
+  background: var(--accent-bg-subtle);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   color: var(--accent);
@@ -1608,10 +1630,10 @@ button.tiny {
 }
 
 .code-copy-btn:hover {
-  background: rgba(88, 166, 255, 0.2);
+  background: var(--accent-bg-hover);
   border-color: var(--accent);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.2);
+  box-shadow: var(--accent-shadow-md);
 }
 
 .code-copy-btn:active {
@@ -1681,15 +1703,15 @@ button.tiny {
 }
 
 .chat-message.user .chat-message-content {
-  background: rgba(88, 166, 255, 0.08);
-  border-color: rgba(88, 166, 255, 0.25);
-  box-shadow: 0 2px 8px rgba(88, 166, 255, 0.05);
+  background: var(--accent-bg-subtle);
+  border-color: var(--accent-border);
+  box-shadow: var(--accent-shadow-sm);
 }
 
 .chat-message.user:hover .chat-message-content {
-  background: rgba(88, 166, 255, 0.12);
-  border-color: rgba(88, 166, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.1), 0 0 0 1px rgba(88, 166, 255, 0.2);
+  background: var(--accent-bg-hover);
+  border-color: var(--accent-border-hover);
+  box-shadow: var(--accent-shadow-md), var(--accent-ring);
 }
 
 .chat-typing {
@@ -1713,15 +1735,15 @@ button.tiny {
   display: flex;
   gap: 12px;
   flex-direction: column;
-  background: rgba(22, 27, 34, 0.98);
+  background: var(--chat-header-bg);
   backdrop-filter: blur(10px);
 }
 
 .chat-panel.docked .chat-input-area {
   padding: 14px 16px;
   gap: 10px;
-  border-top: 1px solid rgba(88, 166, 255, 0.1);
-  background: rgba(22, 27, 34, 0.98);
+  border-top: 1px solid var(--accent-glow-sm);
+  background: var(--chat-header-bg);
 }
 
 .chat-input-buttons {
@@ -1757,7 +1779,7 @@ button.tiny {
   min-height: 44px;
   max-height: 150px;
   overflow-y: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--chat-shadow-md);
 }
 
 .chat-panel.docked .chat-input {
@@ -1773,13 +1795,13 @@ button.tiny {
 .chat-input:hover {
   background: var(--input-bg-hover);
   border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.1);
+  box-shadow: var(--accent-shadow-md);
 }
 
 .chat-input:focus {
   background: var(--input-bg-hover);
   border-color: var(--accent);
-  box-shadow: 0 4px 16px rgba(88, 166, 255, 0.2), 0 0 0 3px rgba(88, 166, 255, 0.1);
+  box-shadow: 0 4px 16px var(--accent-glow-lg), var(--accent-ring-focus);
 }
 
 .chat-panel.docked .chat-input:focus {
@@ -1853,10 +1875,10 @@ button.tiny {
 }
 
 .chat-panel.maximized .chat-header {
-  padding: 32px 60px;
-  border-bottom: 1px solid rgba(88, 166, 255, 0.15);
+  padding: 32px var(--spacing-5xl);
+  border-bottom: 1px solid var(--accent-glow-md);
   backdrop-filter: blur(20px);
-  background: rgba(22, 27, 34, 0.95);
+  background: var(--chat-header-bg);
 }
 
 .chat-panel.zen-mode .chat-header {
