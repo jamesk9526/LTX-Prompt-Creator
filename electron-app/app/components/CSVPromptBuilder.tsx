@@ -32,8 +32,6 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
   const [autoSave, setAutoSave] = useState(false);
   const [statusMessage, setStatusMessage] = useState('No file loaded');
   const [statusColor, setStatusColor] = useState<'gray' | 'green' | 'orange' | 'blue'>('gray');
-  const [defaultFilePath, setDefaultFilePath] = useState<string>('');
-  const [showDefaultFileInput, setShowDefaultFileInput] = useState(false);
 
   // Edit form state (number is automatic, only positive/negative are editable)
   const [editPositive, setEditPositive] = useState('');
@@ -56,19 +54,11 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     if (isOpen) {
       const savedPath = localStorage.getItem('csv_default_file_path');
       if (savedPath) {
-        setDefaultFilePath(savedPath);
         setCurrentFile(savedPath);
         setAutoSave(true);
       }
     }
   }, [isOpen, rows.length]);
-  
-  // Update status when auto-save is enabled
-  useEffect(() => {
-    if (autoSave && currentFile) {
-      updateStatus(`Auto-saving to: ${currentFile}`, 'green');
-    }
-  }, [autoSave, currentFile, updateStatus]);
 
   // Get next available number
   const getNextNumber = (): string => {
@@ -137,6 +127,27 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     setStatusMessage(message);
     setStatusColor(color);
   }, []);
+  
+  // Update status when auto-save is enabled
+  useEffect(() => {
+    if (autoSave && currentFile) {
+      updateStatus(`Auto-saving to: ${currentFile}`, 'green');
+    }
+  }, [autoSave, currentFile, updateStatus]);
+
+  // Generate CSV content
+  const generateCSVContent = useCallback((): string => {
+    const header = 'Number,positive,negative\n';
+    const content = rows.map(row => {
+      const numbers = rows.map(r => parseInt(r.number) || 0);
+      const maxNumber = Math.max(...numbers, 0);
+      const num = row.number || String(maxNumber + 1);
+      const pos = `"${row.positive.replace(/"/g, '""')}"`;
+      const neg = `"${row.negative.replace(/"/g, '""')}"`;
+      return `${num},${pos},${neg}`;
+    }).join('\n');
+    return header + content;
+  }, [rows]);
 
   // Auto-save functionality
   const autoSaveData = useCallback(() => {
@@ -156,7 +167,7 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
       // Silent error handling for auto-save
       updateStatus('Auto-save failed', 'orange');
     }
-  }, [autoSave, currentFile, rows, updateStatus]);
+  }, [autoSave, currentFile, generateCSVContent, updateStatus]);
 
   // Update row from edit form
   const updateFromForm = useCallback((field: 'positive' | 'negative', value: string) => {
@@ -184,18 +195,6 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
       updateFromForm('negative', editNegative);
     }
   }, [editNegative, selectedRowId, updateFromForm]);
-
-  // Generate CSV content
-  const generateCSVContent = (): string => {
-    const header = 'Number,positive,negative\n';
-    const content = rows.map(row => {
-      const num = row.number || getNextNumber();
-      const pos = `"${row.positive.replace(/"/g, '""')}"`;
-      const neg = `"${row.negative.replace(/"/g, '""')}"`;
-      return `${num},${pos},${neg}`;
-    }).join('\n');
-    return header + content;
-  };
   
   // Add a new row with data (for external use like chat-to-CSV)
   const addRowWithData = useCallback((positiveText: string) => {
@@ -259,7 +258,6 @@ export default function CSVPromptBuilder({ isOpen, onClose }: CSVPromptBuilderPr
     }
     
     localStorage.setItem('csv_default_file_path', currentFile);
-    setDefaultFilePath(currentFile);
     setAutoSave(true);
     updateStatus(`Set as default: ${currentFile}`, 'blue');
     setTimeout(() => {
