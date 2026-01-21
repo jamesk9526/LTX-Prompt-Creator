@@ -1,45 +1,12 @@
 :root {
-  /* GitHub Dark - Flat & Zen Theme */
-  --bg: #0d1117;
-  --panel: #161b22;
-  --panel-strong: #21262d;
-  --text: #c9d1d9;
-  --fg: var(--text);
-  --muted: #8b949e;
-  --accent: #58a6ff;
-  --accent-strong: #1f6feb;
-  --border: #30363d;
-  --border-strong: #484f58;
-  --radius: 6px;
-  --radius-sm: 3px;
-  
-  /* Flat design - no shadows, no gradients */
-  --shadow: none;
-  --shadow-subtle: none;
-  
-  --grid-gap: 12px;
-  --step-width: min(1440px, calc(100% - 24px));
+  /* Modern Color Palette - inherits from globals.css */
+  /* These override for wizard-specific needs */
+  --grid-gap: 16px;
+  --step-width: min(1440px, calc(100% - 32px));
   --preview-scale: 0.95;
-  --preview-line-height: 1.4;
-  --input-bg: #0d1117;
-  --input-bg-hover: #161b22;
+  --preview-line-height: 1.5;
   
-  /* Spacing System - clean and minimal */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
-  --spacing-2xl: 24px;
-  --spacing-3xl: 32px;
-  
-  /* Transition Speeds */
-  --transition-fast: 0.15s;
-  --transition-normal: 0.2s;
-  --transition-slow: 0.3s;
-  --easing: cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Elevation System (z-index) */
+  /* Z-index system */
   --z-base: 0;
   --z-dropdown: 100;
   --z-sticky: 50;
@@ -49,28 +16,6 @@
   --z-tooltip: 10000;
   --z-notification: 10010;
   --z-fullscreen: 99999;
-  
-  /* Chat UI Enhancement Variables */
-  --chat-header-bg: rgba(22, 27, 34, 0.98);
-  --chat-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
-  --chat-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --chat-shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
-  --chat-shadow-xl: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --chat-shadow-2xl: 0 12px 48px rgba(0, 0, 0, 0.3);
-  --accent-bg-subtle: rgba(88, 166, 255, 0.08);
-  --accent-bg-hover: rgba(88, 166, 255, 0.12);
-  --accent-border: rgba(88, 166, 255, 0.25);
-  --accent-border-hover: rgba(88, 166, 255, 0.4);
-  --accent-glow-sm: rgba(88, 166, 255, 0.1);
-  --accent-glow-md: rgba(88, 166, 255, 0.15);
-  --accent-glow-lg: rgba(88, 166, 255, 0.2);
-  --accent-shadow-sm: 0 2px 8px rgba(88, 166, 255, 0.05);
-  --accent-shadow-md: 0 4px 12px rgba(88, 166, 255, 0.1);
-  --accent-shadow-lg: 0 4px 12px rgba(88, 166, 255, 0.15);
-  --accent-ring: 0 0 0 1px rgba(88, 166, 255, 0.2);
-  --accent-ring-focus: 0 0 0 3px rgba(88, 166, 255, 0.1);
-  --spacing-4xl: 40px;
-  --spacing-5xl: 60px;
 }
 
 html, body {
@@ -78,16 +23,12 @@ html, body {
   background: var(--bg);
 }
 
-body {
-  margin: 0;
-}
-
 .wizard-shell {
   width: 100vw;
   height: 100vh;
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.08) 0%, transparent 50%), var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   display: flex;
@@ -102,11 +43,15 @@ body {
   right: 0;
   z-index: 60;
   width: 100%;
-  height: 48px;
-  background: var(--panel-strong);
-  border-bottom: 1px solid var(--border);
+  height: 56px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-lg);
+  -webkit-backdrop-filter: var(--blur-lg);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
+  transition: all var(--transition-base);
 }
 
 .topbar-inner {
@@ -114,30 +59,36 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 6px 10px;
+  gap: 12px;
+  padding: 8px 16px;
   height: 100%;
 }
 
 .topbar-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
 .topbar-group {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  transition: all var(--transition-base);
+}
+
+.topbar-group:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border);
 }
 
 .topbar-group .ghost {
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 13px;
 }
 
@@ -146,34 +97,41 @@ body {
   margin-left: 8px;
   font-size: 12px;
   color: var(--muted);
+  padding: 3px 8px;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
 
 .topbar-spacer {
-  height: 159px;
+  height: 165px;
 }
 
-/* Tool Dock at Top */
+/* Modern Tool Dock with Glassmorphism */
 .tool-dock {
   position: fixed;
-  top: 95px;
+  top: 103px;
   left: 0;
   right: 0;
-  height: 64px;
+  height: 68px;
   z-index: 61;
-  background: var(--panel);
-  border-bottom: 2px solid var(--border);
-  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-md);
+  -webkit-backdrop-filter: var(--blur-md);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--space-4);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  transition: all var(--transition-normal);
+  transition: all var(--transition-base);
 }
 
 .tool-dock::-webkit-scrollbar {
-  height: 4px;
+  height: 6px;
 }
 
 .tool-dock::-webkit-scrollbar-track {
@@ -182,7 +140,8 @@ body {
 
 .tool-dock::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
 }
 
 .tool-dock::-webkit-scrollbar-thumb:hover {
@@ -192,9 +151,9 @@ body {
 .tool-dock-section {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: 0 var(--spacing-sm);
-  border-right: 2px solid var(--border);
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-right: 1px solid var(--border);
   white-space: nowrap;
 }
 
