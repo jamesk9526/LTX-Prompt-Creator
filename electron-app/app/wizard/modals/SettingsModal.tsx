@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ACCENT_COLOR_PRESETS, applyAccentColor, saveAccentColor, getSavedAccentColor, getPresetColor, type AccentColorPreset } from '../../utils/accentColors';
 
 type UiPrefs = {
   typingEnabled: boolean;
@@ -134,6 +135,17 @@ export default function SettingsModal({
   chatSystemPrompt = '',
   onSetChatSystemPrompt = () => {},
 }: SettingsModalProps) {
+  // Accent color state
+  const [selectedAccentColor, setSelectedAccentColor] = useState<AccentColorPreset>(
+    getSavedAccentColor() || ACCENT_COLOR_PRESETS[0]
+  );
+
+  const handleAccentColorChange = (preset: AccentColorPreset) => {
+    setSelectedAccentColor(preset);
+    applyAccentColor(preset);
+    saveAccentColor(preset);
+  };
+
   if (!isOpen) return null;
 
   const settingsFields = Object.keys(optionSets[settingsMode] || {}).length
@@ -323,6 +335,27 @@ export default function SettingsModal({
                   aria-label="Preview font scale"
                 />
               </label>
+
+              <div className="settings-divider" />
+
+              <div className="settings-experience-head">
+                <p className="eyebrow">Theme Accent Color</p>
+                <p className="hint">Customize the app's accent color to match your preference.</p>
+              </div>
+
+              <div className="accent-color-picker">
+                {ACCENT_COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    className={`color-preset ${selectedAccentColor.name === preset.name ? 'active' : ''}`}
+                    style={{ backgroundColor: getPresetColor(preset) }}
+                    onClick={() => handleAccentColorChange(preset)}
+                    title={preset.name}
+                    aria-label={`Select ${preset.name} accent color`}
+                  />
+                ))}
+              </div>
 
               <div className="settings-divider" />
 
