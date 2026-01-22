@@ -246,10 +246,18 @@ npm run clean            # Clean build artifacts
 electron-app/
 ├── app/                    # Next.js app directory
 │   ├── components/         # React components
+│   │   ├── layout.css      # App shell layout styles
+│   │   ├── components.css  # Common component styles
+│   │   ├── titlebar.module.css  # Title bar styles
+│   │   └── ui/             # UI component library
+│   │       └── ui.css      # Reusable UI component styles
 │   ├── wizard/             # Wizard page & components
+│   │   ├── wizard.css      # Wizard-specific styles
+│   │   └── components/
+│   │       └── ToolsMenu.css  # Tools menu styles
 │   ├── utils/              # Utility functions
 │   ├── types/              # TypeScript types
-│   └── globals.css         # Global styles
+│   └── globals.css         # Global styles & CSS variables
 ├── electron/               # Electron main process
 │   ├── main.js             # Main entry point
 │   ├── preload.js          # Preload script
@@ -258,6 +266,19 @@ electron-app/
 ├── scripts/                # Build scripts
 └── tests/                  # Test files
 ```
+
+### Styling Architecture
+
+The app uses a modern CSS architecture with CSS custom properties (variables):
+
+- **`globals.css`** - Core styles with CSS variables for colors, spacing, typography, and components
+- **`layout.css`** - App shell and main layout structure
+- **`components.css`** - Shared component styles (Toast, Chat, Projects, etc.)
+- **`ui.css`** - Reusable UI components (Tooltip, Dropdown, Tabs, Cards, Switch)
+- **`wizard.css`** - Wizard-specific interface styles
+- **Component-specific CSS** - Individual styles for complex components
+
+All styles use CSS custom properties defined in `globals.css`, making it easy to customize colors, spacing, and other design tokens.
 
 ### Building for Production
 
@@ -472,6 +493,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✨ Light theme with clean, flat design
 - 🎨 Customizable accent colors (10 presets)
 - 🎯 Improved UI organization and readability
+- 🔧 **CSS Architecture Fix** - Comprehensive styling system now properly applied across all components
 
 See [TODO.md](TODO.md) for detailed roadmap.
 

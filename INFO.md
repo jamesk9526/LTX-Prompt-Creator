@@ -79,22 +79,44 @@ File System / OS APIs / Ollama HTTP API
 
 ### CSS Architecture
 
-The app uses a **design system** approach with CSS custom properties:
+The app uses a **modern design system** approach with CSS custom properties (CSS variables) for theming:
 
 ```css
 /* Global Theme Variables (globals.css) */
---bg: #0a0a0f                          /* Deep background */
---panel: rgba(13, 13, 22, 0.95)        /* Panel backgrounds */
---text: #e8e6f0                        /* Primary text */
---accent: #8b5cf6                      /* Purple accent */
---border: rgba(139, 92, 246, 0.3)      /* Border color */
---radius: 8px                          /* Border radius */
+/* Light Theme Base Colors */
+--bg-primary: #ffffff
+--bg-secondary: #f8f9fa
+--text-primary: #212529
+--text-secondary: #495057
+
+/* Accent Colors (Customizable) */
+--accent-hue: 210              /* Default: Blue */
+--accent-500: hsl(210, 79%, 51%)   /* Primary accent */
+--accent-600: hsl(210, 79%, 45%)   /* Hover state */
+
+/* Design Tokens */
+--radius-md: 6px               /* Border radius */
+--space-4: 16px                /* Standard spacing */
+--shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1)
 ```
 
 **CSS Files:**
-- `globals.css` - Global theme variables and base styles
-- `wizard.css` - Main wizard layout and step styling
-- Component-specific CSS modules for isolated styling
+- `globals.css` - Core styles with CSS variables for colors, spacing, typography, shadows, and base component styles
+- `layout.css` - App shell and main layout structure (flexbox-based, full viewport)
+- `components.css` - Shared component styles (Toast, Chat, Projects, Error components)
+- `ui.css` - Reusable UI component library (Tooltip, Dropdown, Tabs, Cards, Switch)
+- `wizard.css` - Wizard-specific interface styles and layout
+- `titlebar.module.css` - Custom window controls for Electron
+- `ToolsMenu.css` - Tools dropdown menu styles
+- `KeyboardShortcutsModal.css` - Keyboard shortcuts display
+- `CSVPromptBuilder.css` - Spreadsheet-like CSV editor interface
+
+**Design System Features:**
+- 🎨 Customizable accent colors (10 presets: Blue, Purple, Pink, Red, Orange, Yellow, Green, Teal, Cyan, Indigo)
+- 📏 Consistent spacing scale (4px base unit)
+- 🎭 Light theme with excellent contrast and readability
+- 🔄 Smooth transitions and animations
+- ♿ Accessible focus states and ARIA support
 
 ### TypeScript Structure
 
