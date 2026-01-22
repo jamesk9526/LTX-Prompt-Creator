@@ -135,9 +135,9 @@ export default function SettingsModal({
   chatSystemPrompt = '',
   onSetChatSystemPrompt = () => {},
 }: SettingsModalProps) {
-  // Accent color state
+  // Accent color state with lazy initialization
   const [selectedAccentColor, setSelectedAccentColor] = useState<AccentColorPreset>(
-    getSavedAccentColor() || ACCENT_COLOR_PRESETS[0]
+    () => getSavedAccentColor() || ACCENT_COLOR_PRESETS[0]
   );
 
   const handleAccentColorChange = (preset: AccentColorPreset) => {

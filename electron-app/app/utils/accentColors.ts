@@ -29,10 +29,32 @@ const STORAGE_KEY = 'ltx_prompter_accent_color';
  * Apply accent color to the document
  */
 export function applyAccentColor(preset: AccentColorPreset): void {
+  // Validate input values
+  const hue = Math.max(0, Math.min(360, preset.hue));
+  const saturation = Math.max(0, Math.min(100, preset.saturation));
+  const lightness = Math.max(0, Math.min(100, preset.lightness));
+
   const root = document.documentElement;
-  root.style.setProperty('--accent-hue', preset.hue.toString());
-  root.style.setProperty('--accent-saturation', `${preset.saturation}%`);
-  root.style.setProperty('--accent-lightness', `${preset.lightness}%`);
+  root.style.setProperty('--accent-hue', hue.toString());
+  root.style.setProperty('--accent-saturation', `${saturation}%`);
+  root.style.setProperty('--accent-lightness', `${lightness}%`);
+}
+
+/**
+ * Validate that an object is a valid AccentColorPreset
+ */
+function isValidAccentColorPreset(obj: any): obj is AccentColorPreset {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    typeof obj.name === 'string' &&
+    typeof obj.hue === 'number' &&
+    typeof obj.saturation === 'number' &&
+    typeof obj.lightness === 'number' &&
+    obj.hue >= 0 && obj.hue <= 360 &&
+    obj.saturation >= 0 && obj.saturation <= 100 &&
+    obj.lightness >= 0 && obj.lightness <= 100
+  );
 }
 
 /**
@@ -42,7 +64,11 @@ export function getSavedAccentColor(): AccentColorPreset | null {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Validate the parsed object before returning
+      if (isValidAccentColorPreset(parsed)) {
+        return parsed;
+      }
     }
   } catch (error) {
     console.error('Failed to load saved accent color:', error);
