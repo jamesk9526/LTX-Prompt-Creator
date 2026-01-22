@@ -20,6 +20,18 @@
   --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   --accent-gradient-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   
+  /* Purple accent (for variety) */
+  --purple: #8b5cf6;                      /* Purple primary */
+  --purple-strong: #7c3aed;               /* Purple dark */
+  --purple-light: #a78bfa;                /* Purple light */
+  
+  /* Accent background variations */
+  --accent-bg-subtle: rgba(99, 102, 241, 0.08);
+  --accent-bg-light: rgba(99, 102, 241, 0.1);
+  --accent-bg-medium: rgba(99, 102, 241, 0.15);
+  --purple-bg-subtle: rgba(139, 92, 246, 0.1);
+  --purple-bg-medium: rgba(139, 92, 246, 0.25);
+  
   /* Secondary accent - Cyan/Blue */
   --secondary: #06b6d4;                   /* Cyan */
   --secondary-strong: #0891b2;            /* Cyan dark */
