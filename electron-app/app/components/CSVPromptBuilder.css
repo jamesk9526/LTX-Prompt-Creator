@@ -134,12 +134,12 @@
 }
 
 .csv-status-green {
-  color: #2b8a3e;
+  color: var(--success-text);
   background: var(--success-bg);
 }
 
 .csv-status-orange {
-  color: #e67700;
+  color: var(--warning-text);
   background: var(--warning-bg);
 }
 

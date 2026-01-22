@@ -42,10 +42,16 @@
   /* === Semantic Colors === */
   --success: #51cf66;
   --success-bg: #d3f9d8;
+  --success-text: #2b8a3e;
+  --success-border: #8ce99a;
   --warning: #ffa94d;
   --warning-bg: #fff3bf;
+  --warning-text: #e67700;
+  --warning-border: #ffd8a8;
   --error: #ff6b6b;
   --error-bg: #ffe3e3;
+  --error-text: #c92a2a;
+  --error-border: #ffc9c9;
   --info: #4dabf7;
   --info-bg: #d0ebff;
 
@@ -505,21 +511,21 @@ textarea {
 }
 
 .badge.success {
-  color: #2b8a3e;
+  color: var(--success-text);
   background: var(--success-bg);
-  border-color: #8ce99a;
+  border-color: var(--success-border);
 }
 
 .badge.warning {
-  color: #e67700;
+  color: var(--warning-text);
   background: var(--warning-bg);
-  border-color: #ffd8a8;
+  border-color: var(--warning-border);
 }
 
 .badge.error {
-  color: #c92a2a;
+  color: var(--error-text);
   background: var(--error-bg);
-  border-color: #ffc9c9;
+  border-color: var(--error-border);
 }
 
 /* ----------------------------------------------------------------------------
