@@ -23,7 +23,8 @@ LTX Prompter is a **beautifully designed desktop application** that helps you cr
 
 ### ✨ Why LTX Prompter?
 
-- 🎨 **Modern, Beautiful UI** - Sleek glassmorphism design with smooth animations
+- 🎨 **Modern, Clean UI** - Fresh light theme with customizable accent colors
+- 🎨 **Personalize Your Experience** - Choose from 10 beautiful accent colors in settings
 - 🧠 **AI-Powered** - Optional Ollama integration for intelligent suggestions
 - 📝 **Step-by-Step Wizard** - Guided prompt creation with 10 comprehensive steps
 - 🎬 **Multiple Modes** - Cinematic, Classic, Photography, Drone, Animation
@@ -37,16 +38,16 @@ LTX Prompter is a **beautifully designed desktop application** that helps you cr
 ## 📸 Screenshots
 
 ### Welcome Screen
-![Welcome Screen](https://github.com/user-attachments/assets/2bff5843-d343-4bb9-afed-6de94a39b9c7)
-*Beautiful gradient background with typewriter animation and modern glassmorphism design*
+![Welcome Screen](https://github.com/user-attachments/assets/34251b89-0f23-4aed-bec3-4f40121e3e80)
+*Clean, modern light theme with smooth animations and friendly onboarding*
 
 ### Main Wizard Interface
-![Main Interface](https://github.com/user-attachments/assets/bea31101-0ce2-4e49-b4af-ada5e35dee9a)
-*Clean, organized workspace with tool dock, step navigation, and preview sidebar*
+![Main Interface](https://github.com/user-attachments/assets/d94ad6b3-5bfa-4691-a594-2e1bc3add159)
+*Intuitive workspace with clear organization and easy-to-read interface*
 
-### Settings & Customization
-![Settings Modal](https://github.com/user-attachments/assets/179ed693-658a-4076-a77e-6e2bd74d96ca)
-*Comprehensive settings with preset management and mode customization*
+### Settings & Accent Color Customization
+![Settings Modal](https://github.com/user-attachments/assets/187cb2fd-7197-4d88-a3a6-d3710e2f2d15)
+*Comprehensive settings with customizable accent colors - choose from 10 beautiful color presets*
 
 ---
 
@@ -149,7 +150,8 @@ Each mode is optimized for different use cases:
 - **Preset Management** - Create and save custom presets
 - **Option Sets** - Customize dropdown options per mode
 - **Keyboard Shortcuts** - Full customization support
-- **Theme Options** - Adjust to your preferences
+- **Accent Colors** - Choose from 10 beautiful color themes (Blue, Purple, Pink, Red, Orange, Yellow, Green, Teal, Cyan, Indigo)
+- **Light Theme** - Clean, modern interface optimized for readability
 - **Export Templates** - Custom export formats
 
 ### 🎯 Quality Tools
@@ -460,12 +462,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Coming Soon
 - 🌐 macOS and Linux support
-- 🌓 Light mode theme
 - 🔍 Advanced search and filtering
-- 🎨 Custom themes and skins
+- 🌓 Dark mode theme option
 - 🌍 Multi-language support
 - ☁️ Cloud sync (optional)
 - 🤝 Collaboration features
+
+### ✅ Recently Added
+- ✨ Light theme with clean, flat design
+- 🎨 Customizable accent colors (10 presets)
+- 🎯 Improved UI organization and readability
 
 See [TODO.md](TODO.md) for detailed roadmap.
 
