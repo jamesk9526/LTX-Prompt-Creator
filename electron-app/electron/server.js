@@ -6,7 +6,15 @@ function startServer(port, rootDir) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       // Decode URL first, then remove query string
-      let pathname = decodeURIComponent(req.url);
+      let pathname;
+      try {
+        pathname = decodeURIComponent(req.url);
+      } catch (err) {
+        // Handle malformed URL encoding
+        res.writeHead(400);
+        res.end('Bad Request');
+        return;
+      }
       pathname = pathname.split('?')[0];  // Remove query string
       if (pathname.startsWith('/')) pathname = pathname.slice(1);
 
