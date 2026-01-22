@@ -2,6 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'export',
+  // Ensure trailing slash for proper static export routing
+  trailingSlash: true,
   // Use default .next build dir so the exported static site lands in ./out
   images: {
     unoptimized: true,

@@ -6,7 +6,8 @@ function startServer(port, rootDir) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       // Remove query string and decode URL
-      let pathname = decodeURIComponent(req.url);
+      let pathname = req.url.split('?')[0];  // Remove query string
+      pathname = decodeURIComponent(pathname);
       if (pathname.startsWith('/')) pathname = pathname.slice(1);
 
       // Build file path
