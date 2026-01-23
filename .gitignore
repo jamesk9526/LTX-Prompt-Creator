@@ -1,2 +1,7 @@
-/electron-app/node_modules
-/electron-app/release
+node_modules
+.next
+out
+dist
+*.log
+.DS_Store
+/release
