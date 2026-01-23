@@ -1,4 +1,4 @@
-import './globals.css';
+
 import type { Metadata } from 'next';
 import { AppShell } from './components/app-shell';
 

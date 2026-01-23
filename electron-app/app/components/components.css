@@ -12,7 +12,6 @@
   justify-content: flex-end;
   z-index: 1000;
   padding-top: 60px;
-  animation: fadeIn 200ms var(--transition-base);
 }
 
 .ai-refiner-panel {
@@ -25,18 +24,6 @@
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-2xl);
-  animation: slideInRight 250ms var(--transition-base);
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
 }
 
 .ai-refiner-header {
@@ -117,7 +104,6 @@
 
 .prompt-preview:hover {
   border-color: var(--accent);
-  box-shadow: var(--shadow-md);
 }
 
 .prompt-preview.refined {
@@ -149,8 +135,6 @@
 
 .ai-actions .primary:hover:not(:disabled) {
   background: var(--accent-gradient-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), var(--glow-accent-strong);
 }
 
 .ai-actions .secondary {
@@ -162,8 +146,6 @@
 
 .ai-actions .secondary:hover:not(:disabled) {
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .ai-actions button:disabled {
@@ -205,8 +187,6 @@
 .tab-btn:hover {
   border-color: var(--accent);
   color: var(--fg);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
 }
 
 .tab-btn.active {
@@ -239,8 +219,6 @@
 .suggestion-item:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .suggestion-item.applied {
@@ -298,8 +276,6 @@
   background: var(--accent-gradient);
   color: white;
   border-color: transparent;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--glow-accent);
 }
 
 .suggestion-action:disabled {
@@ -359,7 +335,6 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
-  animation: fadeIn 200ms var(--transition-base);
 }
 
 .history-modal-panel {
@@ -374,18 +349,6 @@
   box-shadow: var(--shadow-2xl);
   backdrop-filter: var(--blur-lg);
   overflow: hidden;
-  animation: scaleIn 250ms var(--transition-base);
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 .history-modal-header {
@@ -526,8 +489,6 @@
 .history-item:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .history-item-header {
@@ -585,14 +546,11 @@
   background: var(--accent-gradient);
   border-color: transparent;
   color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--glow-accent);
 }
 
 .history-item-actions button.danger:hover {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   border-color: transparent;
-  box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.4);
 }
 
 .history-item-text {
@@ -617,7 +575,6 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
-  animation: fadeIn 200ms var(--transition-base);
 }
 
 .preset-modal-panel {
@@ -632,7 +589,6 @@
   box-shadow: var(--shadow-2xl);
   backdrop-filter: var(--blur-lg);
   overflow: hidden;
-  animation: scaleIn 250ms var(--transition-base);
 }
 
 .preset-modal-header {
@@ -689,7 +645,6 @@
   color: var(--accent);
   border-bottom-color: var(--accent);
   background: rgba(139, 92, 246, 0.05);
-  text-shadow: var(--glow-accent);
 }
 
 .preset-modal-body {
@@ -742,8 +697,6 @@
 .preset-card:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 .preset-card-header {
@@ -790,14 +743,11 @@
   background: var(--accent-gradient);
   border-color: transparent;
   color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--glow-accent);
 }
 
 .preset-card-actions button.danger:hover {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   border-color: transparent;
-  box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.4);
 }
 
 .preset-description {
@@ -975,8 +925,6 @@
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   border-color: transparent;
   color: white;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.4);
 }
 
 .preset-creator-actions {
@@ -1004,8 +952,6 @@
 
 .preset-creator-actions .primary:hover:not(:disabled) {
   background: var(--accent-gradient-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg), var(--glow-accent-strong);
 }
 
 .preset-creator-actions .primary:disabled {
@@ -1023,19 +969,9 @@
 .preset-creator-actions .ghost:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 /* General modal animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
 /* Ensure modals layer correctly */
 .settings-overlay,
@@ -1073,8 +1009,6 @@
   background: rgba(239, 68, 68, 0.1);
   border-color: #ef4444;
   color: #ef4444;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), 0 0 20px rgba(239, 68, 68, 0.3);
 }
 
 /* Dark mode compatibility */

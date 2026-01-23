@@ -1005,23 +1005,6 @@ Please review this context and let me know how I can optimize my prompts for the
                                         <button
                                           className="code-copy-btn"
                                           onClick={() => {
-                                            // Save to CSV builder
-                                            if (typeof window !== 'undefined' && (window as any).csvBuilderAddRow) {
-                                              (window as any).csvBuilderAddRow(actualCode);
-                                              showToast('Saved to CSV builder');
-                                            } else {
-                                              showToast('CSV builder not available');
-                                            }
-                                          }}
-                                          title="Save prompt to CSV builder"
-                                        >
-                                          CSV
-                                        </button>
-                                      )}
-                                      {headerType === 'prompt' && (
-                                        <button
-                                          className="code-copy-btn"
-                                          onClick={() => {
                                             if (typeof window !== 'undefined' && typeof onApplyPrompt === 'function') {
                                               onApplyPrompt(actualCode);
                                             } else {

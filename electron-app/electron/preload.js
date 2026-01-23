@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   ipcRenderer: {
     send: (channel, data) => {
-      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state', 'open-chat-window', 'chat-actions', 'close-chat-window', 'save-csv-file'];
+      const validChannels = ['app-version', 'window-minimize', 'window-maximize', 'window-close', 'get-window-state', 'open-chat-window', 'chat-actions', 'close-chat-window'];
       if (validChannels.includes(channel)) {
         ipcRenderer.send(channel, data);
       }
@@ -24,13 +24,5 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.send('get-window-state');
     }),
     openChatWindow: () => ipcRenderer.send('open-chat-window'),
-  },
-  fileSystem: {
-    saveCSVFile: (filePath, content) => {
-      return new Promise((resolve) => {
-        ipcRenderer.once('csv-file-saved', resolve);
-        ipcRenderer.send('save-csv-file', { filePath, content });
-      });
-    },
   },
 });
