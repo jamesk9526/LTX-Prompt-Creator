@@ -5300,6 +5300,8 @@ function SummaryItem({ label, value, fieldName, onNavigate }: { label: string; v
   );
 }
 
+const MAX_VISIBLE_CHIPS = 12;
+
 function PickOrTypeField({
   ariaLabel,
   value,
@@ -5325,7 +5327,6 @@ function PickOrTypeField({
   favorites?: Favorites;
   history?: History;
 }) {
-  const MAX_VISIBLE_CHIPS = 12;
   const [showAll, setShowAll] = useState(false);
   // Organize options: favorites first, then history, then rest
   const favList = (mode && field && favorites?.[mode]?.[field]) || [];
