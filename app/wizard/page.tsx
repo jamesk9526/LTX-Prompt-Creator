@@ -5325,6 +5325,8 @@ function PickOrTypeField({
   favorites?: Favorites;
   history?: History;
 }) {
+  const MAX_VISIBLE_CHIPS = 12;
+  const [showAll, setShowAll] = useState(false);
   // Organize options: favorites first, then history, then rest
   const favList = (mode && field && favorites?.[mode]?.[field]) || [];
   const histList = (mode && field && history?.[mode]?.[field]) || [];
@@ -5332,6 +5334,8 @@ function PickOrTypeField({
   const isHist = (v: string) => histList.includes(v) && !isFav(v);
   const restList = options.filter((v) => !isFav(v) && !isHist(v));
   const orderedOptions = [...favList, ...histList.filter((v) => options.includes(v)), ...restList];
+  const visibleOptions = showAll ? orderedOptions : orderedOptions.slice(0, MAX_VISIBLE_CHIPS);
+  const hasMore = orderedOptions.length > MAX_VISIBLE_CHIPS;
   const isCustomValue = value && !options.includes(value);
 
   const parseMulti = (raw: string): string[] => {
@@ -5422,9 +5426,9 @@ function PickOrTypeField({
           ))}
         </datalist>
 
-        {orderedOptions && orderedOptions.length > 0 ? (
+        {visibleOptions && visibleOptions.length > 0 ? (
           <div className="quick-options" aria-label="All presets">
-            {orderedOptions.map((v) => (
+            {visibleOptions.map((v) => (
               <button
                 type="button"
                 key={v}
@@ -5436,6 +5440,11 @@ function PickOrTypeField({
                 {v}
               </button>
             ))}
+            {hasMore && (
+              <button type="button" className="quick-chip show-more-chip" onClick={() => setShowAll(!showAll)}>
+                {showAll ? '▲ Less' : `+${orderedOptions.length - MAX_VISIBLE_CHIPS} more`}
+              </button>
+            )}
           </div>
         ) : null}
       </>
@@ -5460,9 +5469,9 @@ function PickOrTypeField({
           <option key={v} value={v} />
         ))}
       </datalist>
-      {orderedOptions && orderedOptions.length > 0 ? (
+      {visibleOptions && visibleOptions.length > 0 ? (
         <div className="quick-options" aria-label="All presets">
-          {orderedOptions.map((v) => (
+          {visibleOptions.map((v) => (
             <button
               type="button"
               key={v}
@@ -5473,6 +5482,11 @@ function PickOrTypeField({
               {v}
             </button>
           ))}
+          {hasMore && (
+            <button type="button" className="quick-chip show-more-chip" onClick={() => setShowAll(!showAll)}>
+              {showAll ? '▲ Less' : `+${orderedOptions.length - MAX_VISIBLE_CHIPS} more`}
+            </button>
+          )}
         </div>
       ) : null}
     </>

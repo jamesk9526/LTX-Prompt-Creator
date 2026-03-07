@@ -166,14 +166,14 @@ body {
   top: 72px;
   left: 0;
   right: 0;
-  height: 44px;
+  height: 40px;
   z-index: 61;
   background: var(--panel);
-  border-bottom: 2px solid var(--border);
-  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -183,9 +183,9 @@ body {
 .tool-dock-section {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  border-right: 2px solid var(--border);
+  gap: 4px;
+  padding: 0 6px;
+  border-right: 1px solid var(--border);
   white-space: nowrap;
 }
 
@@ -470,6 +470,9 @@ body {
   .main-layout { grid-template-columns: 1fr; }
   .preview-sidebar { display: none; }
   .main-layout .steps { border-right: none; }
+  .steps { padding: 0 16px; gap: 12px; }
+  .step { padding: 20px 16px; }
+  .step-header h2 { font-size: 24px; }
 }
 /* consolidated from multiple definitions */
 @media (max-width: 640px) {
@@ -4291,6 +4294,17 @@ button.ghost {
   color: var(--text);
 }
 .quick-chip:hover { border-color: var(--accent); }
+.quick-chip.show-more-chip {
+  background: transparent;
+  border-style: dashed;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.quick-chip.show-more-chip:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 /* Template Card Styling */
 .template-grid {
   display: grid;
@@ -4913,33 +4927,6 @@ button.danger:hover {
    ============================================ */
 
 /* Tablets (1024px and below) */
-@media (max-width: 1024px) {
-  .main-layout {
-    grid-template-columns: 1fr 320px;
-  }
-
-  .preview-sidebar {
-    width: 320px;
-  }
-
-  .sidebar-section {
-    padding: 10px;
-  }
-
-  .steps {
-    padding: 0 16px;
-    gap: 12px;
-  }
-
-  .step {
-    padding: 20px 16px;
-  }
-
-  .step-header h2 {
-    font-size: 24px;
-  }
-}
-
 /* Small tablets / large phones (768px and below) */
 /* consolidated from multiple definitions */
 @media (max-width: 768px) {
@@ -4947,55 +4934,8 @@ button.danger:hover {
     grid-template-columns: 1fr;
   }
 
-  /* Move preview to bottom as drawer */
-  .preview-sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-height: 45vh;
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-    border-top: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-    z-index: 60;
-    animation: slideUp 0.3s ease-out;
-  }
-
-  .preview-sidebar.closed {
-    display: none;
-  }
-
   .main-layout .steps {
-    margin-bottom: 45vh;
-  }
-
-  .sidebar-toggle {
-    flex-direction: row-reverse;
-    justify-content: space-between;
-    padding: 12px;
-  }
-
-  .sidebar-toggle button {
-    padding: 6px 12px;
-    background: var(--button-bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-  }
-
-  .sidebar-section {
-    padding: 8px;
-  }
-
-  .preview-section {
-    max-height: 20vh;
-  }
-
-  .preview-text {
-    font-size: 12px;
-    padding: 8px;
+    border-right: none;
   }
 
   .topbar {
