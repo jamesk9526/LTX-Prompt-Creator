@@ -71,6 +71,14 @@
   --accent-ring-focus: 0 0 0 3px rgba(88, 166, 255, 0.1);
   --spacing-4xl: 40px;
   --spacing-5xl: 60px;
+
+  /* Missing variables - defined for completeness */
+  --dream: linear-gradient(135deg, var(--panel) 0%, var(--panel-strong) 100%);
+  --dream2: linear-gradient(135deg, var(--panel-strong) 0%, var(--bg) 100%);
+  --button-bg: var(--panel-strong);
+  --button-hover: var(--border);
+  --text-muted: var(--muted);
+  --error: #f85149;
 }
 
 html, body {

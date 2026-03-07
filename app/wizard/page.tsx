@@ -32,6 +32,9 @@ const LOCKED_STEPS_STORAGE_KEY = 'ltx_prompter_locked_steps_v1';
 const OLLAMA_SETTINGS_STORAGE_KEY = 'ltx_prompter_ollama_settings_v1';
 const CHAT_SETTINGS_STORAGE_KEY = 'ltx_prompter_chat_settings_v1';
 
+// NSFW-specific fields - shared constant to avoid duplication
+const NSFW_ONLY_FIELDS = ['position', 'activity', 'accessory', 'fetish', 'bodyFocus', 'sensation'];
+
 // CRITICAL OUTPUT RULES - Always sent with every message regardless of mode
 const CRITICAL_OUTPUT_RULES = `🔴 CRITICAL OUTPUT RULES - MANDATORY:
 
@@ -2127,12 +2130,11 @@ If you output ANYTHING other than a JSON array, you have FAILED.`;
   }, [selects]);
 
   const renderPickOrType = (field: string) => {
-    const nsfwFields = ['position', 'activity', 'accessory', 'fetish', 'bodyFocus', 'sensation'];
     // If hideNsfw is on and this is an NSFW field, don't render anything
-    if (uiPrefs.hideNsfw && nsfwFields.includes(field)) {
+    if (uiPrefs.hideNsfw && NSFW_ONLY_FIELDS.includes(field)) {
       return null;
     }
-    const options = nsfwFields.includes(field) ? (optionSets['nsfw']?.[field] || []) : (selects[field] || []);
+    const options = NSFW_ONLY_FIELDS.includes(field) ? (optionSets['nsfw']?.[field] || []) : (selects[field] || []);
     return (
       <PickOrTypeField
         ariaLabel={labelForField(field, uiPrefs.captureWord, mode)}
@@ -2573,8 +2575,7 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
         let options = optionsForField(f);
         // For NSFW mode, only use NSFW-specific options for NSFW-only fields
         if (mode === 'nsfw' && nsfwEnabled) {
-          const nsfwOnlyFields = ['position', 'activity', 'accessory', 'fetish', 'bodyFocus', 'sensation'];
-          if (nsfwOnlyFields.includes(f)) {
+          if (NSFW_ONLY_FIELDS.includes(f)) {
             // Filter to only use NSFW mode's options for these fields
             options = (optionSets[mode]?.[f] || []);
           }
