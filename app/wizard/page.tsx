@@ -4116,17 +4116,14 @@ ${analysis.improvements.length > 0 ? analysis.improvements.map(i => `• ${i}`).
 
           <div className="friend-bubble" aria-label="Assistant message">
             <span>
-              {introStage === 0
-                    ? 'Alright. What are we making today?'
-                    : introStage === 1
-                      ? 'Nice. Do you want cinematic camera language (lens, grade, movement), or keep it simple?'
-                      : introStage === 2
-                        ? 'One tiny preference: should I call it a “shot” or a “video” when I describe the framing?'
-                        : introStage === 3
-                          ? 'Perfect. I’ve got your core setup — two quick guide pages, then we build.'
-                          : introStage === 4
-                            ? 'Pro tip: you can type custom text in any field — no more getting stuck in dropdowns.'
-                            : 'Last one: we’ll also fine-tune dialogue (even in NSFW) before the final prompt.'}</span></div>
+              {[
+                'Alright. What are we making today?',
+                'Nice. Do you want cinematic camera language (lens, grade, movement), or keep it simple?',
+                'One tiny preference: should I call it a “shot” or a “video” when I describe the framing?',
+                'Perfect. I’ve got your core setup — two quick guide pages, then we build.',
+                'Pro tip: you can type custom text in any field — no more getting stuck in dropdowns.',
+                'Last one: we’ll also fine-tune dialogue (even in NSFW) before the final prompt.',
+              ][introStage] || ''}</span></div>
 
           {introStage === 0 && (
             <div className="choice-grid">

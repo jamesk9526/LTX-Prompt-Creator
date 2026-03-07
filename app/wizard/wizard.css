@@ -110,8 +110,8 @@ body {
   right: 0;
   z-index: 60;
   width: 100%;
-  height: 36px;
-  background: var(--panel-strong);
+  height: 32px;
+  background: var(--panel);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -123,7 +123,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 8px;
+  padding: 2px 8px;
   height: 100%;
 }
 
@@ -249,6 +249,9 @@ body {
 /* Adjust page layout to accommodate tool dock */
 .wizard-content {
   margin-top: 40px;
+  max-width: var(--step-width);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .brand {
@@ -1204,12 +1207,12 @@ body {
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--input-bg);
-  border: 2px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   color: var(--text);
   font-size: 13px;
   outline: none;
-  transition: all var(--transition-normal);
+  transition: border-color var(--transition-normal);
 }
 
 .field-input:hover {
@@ -2679,7 +2682,7 @@ button.tiny {
 }
 
 .quality-actions .primary:hover {
-  transform: translateY(-2px);
+  background: var(--panel-strong);
 }
 
 .quality-actions .ghost {
@@ -2714,7 +2717,7 @@ button.tiny {
 
 .mode-card {
   background: var(--panel);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px 16px;
   display: flex;
@@ -2722,14 +2725,13 @@ button.tiny {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
   text-align: center;
 }
 
 .mode-card:hover {
   background: rgba(124, 58, 237, 0.1);
   border-color: var(--accent);
-  transform: translateY(-2px);
 }
 
 .mode-card.active {
@@ -2928,8 +2930,8 @@ button.tiny {
   display: none;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 40px 36px;
+  border-radius: var(--radius);
+  padding: 32px 28px;
   text-align: left;
   width: 100%;
   position: relative;
@@ -2967,12 +2969,12 @@ button.tiny {
 }
 
 .step-header {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--border);
-  background: var(--panel);
-  padding: 14px 16px;
-  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  padding: 10px 0;
+  border-radius: 0;
   position: relative;
 }
 
@@ -2996,7 +2998,7 @@ button.tiny {
 }
 
 .analyze-quality-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  background: var(--panel-strong);
 }
 
 .analyze-quality-btn:disabled {
@@ -3018,7 +3020,7 @@ button.tiny {
 }
 
 .auto-complete-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  background: var(--panel-strong);
 }
 
 .auto-complete-btn:disabled {
@@ -3040,7 +3042,7 @@ button.tiny {
 }
 
 .style-transfer-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  background: var(--panel-strong);
 }
 
 .style-transfer-btn:disabled {
@@ -3050,9 +3052,9 @@ button.tiny {
 }
 
 .step-header h2 {
-  margin: 6px 0 8px;
-  font-size: 24px;
-  letter-spacing: -0.8px;
+  margin: 4px 0 4px;
+  font-size: 22px;
+  letter-spacing: -0.5px;
   font-weight: 700;
   line-height: 1.25;
   color: var(--text);
@@ -3060,20 +3062,20 @@ button.tiny {
 }
 
 .eyebrow {
-  letter-spacing: 1.2px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  font-weight: 700;
-  color: var(--accent);
-  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 10px;
   margin: 0;
-  opacity: 0.9;
+  opacity: 0.8;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  background: rgba(139, 92, 246, 0.12);
-  border-radius: 6px;
-  border: 1px solid rgba(139, 92, 246, 0.25);
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
 }
 
 /* Completion badge for completed steps */
@@ -3100,7 +3102,7 @@ button.tiny {
 
 .hint {
   color: var(--muted);
-  margin-top: 8px;
+  margin-top: 4px;
   margin-bottom: 0;
   font-size: 13px;
   line-height: 1.5;
@@ -3324,27 +3326,25 @@ article.step.active {
 
 .mode-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.02);
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease;
   color: inherit;
 }
 
 .mode-card:hover {
   border-color: var(--accent);
   background: rgba(139, 92, 246, 0.06);
-  transform: none;
 }
 
 .mode-card.active {
   border-color: transparent;
   background: transparent;
-  transform: none;
 }
 
 .mode-title { 
@@ -3420,8 +3420,8 @@ input:checked + .slider::before { transform: translateX(22px); }
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: calc(var(--grid-gap) + 2px);
-  margin-top: 14px;
+  gap: var(--grid-gap);
+  margin-top: 12px;
 }
 
 .field {
@@ -3802,11 +3802,11 @@ textarea::placeholder {
 }
 
 .sticky-nav .primary:hover {
-  transform: translateY(-1px);
+  background: var(--accent-strong);
 }
 
 .sticky-nav .primary:active {
-  transform: translateY(0);
+  background: var(--accent-strong);
 }
 
 @keyframes stickyBarIn {
@@ -3817,12 +3817,12 @@ textarea::placeholder {
 button {
   cursor: pointer;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 12px 18px;
   font-weight: 600;
   color: var(--text);
   background: rgba(20, 21, 24, 0.9);
-  transition: all var(--transition-normal);
+  transition: border-color var(--transition-normal), background var(--transition-normal), color var(--transition-normal);
   font-size: 16px;
 }
 
