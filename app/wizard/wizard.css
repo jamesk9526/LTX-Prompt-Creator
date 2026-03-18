@@ -23,6 +23,8 @@
   --oyama-warning-bg: #fdf6e3;
   --oyama-danger: #b85450;
   --oyama-danger-bg: #fdf0ef;
+  --oyama-code-bg: #2d2a26;
+  --oyama-code-text: #e8e5e0;
   --oyama-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
   --oyama-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --oyama-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -1227,8 +1229,8 @@
 }
 
 .oyama-output-body pre {
-  background: var(--oyama-active);
-  color: var(--oyama-border);
+  background: var(--oyama-code-bg);
+  color: var(--oyama-code-text);
   padding: 16px;
   border-radius: var(--oyama-radius);
   overflow-x: auto;

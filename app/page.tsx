@@ -23,7 +23,7 @@ export default function Home() {
   }, [router]);
 
   const handleStart = () => {
-    try { window.localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch {}
+    try { window.localStorage.setItem(WELCOME_SEEN_KEY, '1'); } catch { /* localStorage unavailable in some environments */ }
     router.push('/wizard');
   };
 
