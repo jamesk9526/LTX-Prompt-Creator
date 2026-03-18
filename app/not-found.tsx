@@ -6,19 +6,19 @@ export default function NotFound() {
       alignItems: 'center',
       justifyContent: 'center',
       height: '100vh',
-      backgroundColor: '#0b0c10',
-      color: '#e9e6df',
-      fontFamily: "'Space Grotesk', sans-serif",
+      backgroundColor: '#f5f3f0',
+      color: '#2d2a26',
+      fontFamily: "'Inter', system-ui, sans-serif",
     }}>
-      <h1 style={{ fontSize: '48px', marginBottom: '12px' }}>404</h1>
-      <p style={{ fontSize: '18px', marginBottom: '24px' }}>Page not found</p>
+      <h1 style={{ fontSize: '48px', marginBottom: '12px', fontWeight: 700 }}>404</h1>
+      <p style={{ fontSize: '18px', marginBottom: '24px', color: '#8a8580' }}>Page not found</p>
       <a href="/" style={{
         padding: '12px 24px',
-        backgroundColor: '#ff7a18',
-        color: '#0b0c10',
+        backgroundColor: '#2d2a26',
+        color: '#fff',
         textDecoration: 'none',
-        borderRadius: '12px',
-        fontWeight: '700',
+        borderRadius: '10px',
+        fontWeight: '600',
       }}>
         Return Home
       </a>
