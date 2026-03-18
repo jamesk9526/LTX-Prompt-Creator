@@ -85,7 +85,7 @@ export default function TitleBar() {
     >
       <div className={styles.brand}>
         <Image className={styles.brandIcon} src="/icon.svg" alt="" width={18} height={18} priority />
-        <div className={styles.title}>LTX Prompter</div>
+        <div className={styles.title}>Oyama Prompt Pro</div>
       </div>
       <div className={styles.controls}>
         <button

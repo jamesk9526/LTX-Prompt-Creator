@@ -4,9 +4,9 @@
   justify-content: space-between;
   height: 36px;
   padding: 0 12px;
-  background: rgba(12, 13, 16, 0.96);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.2);
-  font-family: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  background: #faf9f7;
+  border-bottom: 1px solid #e8e5e0;
+  font-family: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
   -webkit-user-select: none;
   user-select: none;
   flex-shrink: 0;
@@ -18,8 +18,8 @@
 .title {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.4px;
-  color: var(--text, #e8e6f0);
+  letter-spacing: 0.3px;
+  color: #2d2a26;
 }
 
 .brand {
@@ -50,35 +50,33 @@
   width: 28px;
   height: 28px;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(233, 230, 223, 0.7);
+  background: transparent;
+  color: #8a8580;
   cursor: pointer;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 6px;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   padding: 0;
 }
 
 .button:hover {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: rgba(124, 58, 237, 0.3);
-  color: var(--text, #e8e6f0);
+  background: rgba(0, 0, 0, 0.06);
+  color: #2d2a26;
 }
 
 .button:active {
-  background: rgba(124, 58, 237, 0.25);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 0 2px rgba(99, 130, 150, 0.4);
 }
 
 .closeButton:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
+  background: rgba(220, 60, 60, 0.1);
+  color: #dc3c3c;
 }
 
 .closeButton:active {
-  background: rgba(239, 68, 68, 0.25);
+  background: rgba(220, 60, 60, 0.18);
 }

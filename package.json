@@ -1,7 +1,7 @@
 {
-  "name": "ltx-prompter",
-  "version": "1.2.0",
-  "description": "A guided, friendly prompt wizard with customizable presets for video and creative production.",
+  "name": "oyama-prompt-pro",
+  "version": "2.0.0",
+  "description": "A premium prompt engineering studio for crafting, versioning, and testing AI prompts with Ollama.",
   "author": "Your Name",
   "license": "MIT",
   "private": true,
@@ -26,8 +26,8 @@
     "lint": "next lint"
   },
   "build": {
-    "appId": "com.ltxprompter.app",
-    "productName": "LTX Prompter",
+    "appId": "com.oyama.promptpro",
+    "productName": "Oyama Prompt Pro",
     "directories": {
       "buildResources": "assets",
       "output": "release"
@@ -60,7 +60,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "LTX Prompter",
+      "shortcutName": "Oyama Prompt Pro",
       "include": "assets/installer/ollama-notes.nsh"
     },
     "mac": {
